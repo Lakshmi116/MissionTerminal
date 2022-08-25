@@ -56,10 +56,143 @@ class AlgoStrategy(gamelib.AlgoCore):
         gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
 
-        self.starter_strategy(game_state)
+        self.golaks(game_state)
 
         game_state.submit_turn()
 
+
+    """Our Strategy.com"""
+
+    def GOLAKS(game_state):
+        
+        return
+
+# Level 1 abstraction 
+    def vajra_kawachadhara(game_state):
+        # Basic defense build up
+        # Used in first 5 rounds. Opening move
+
+        return
+    
+    def pothuraju(gmae_state):
+        # Maintainance of defense
+        # Upgrades defense system in a timely fashion
+
+        return
+
+    def aswadalam(game_state):
+        # Controls the loc and deploys demolishers to weaken the defense
+
+        return 
+
+    def vishalakshi(game_state):
+        # Fetches points - Fast moving healthy units
+
+        return
+    
+    def aayurvathi(game_state):
+        # Deploys support units in a timely fashion
+
+        return 
+
+    def eedhi_maranam(game_state):
+        # Interceptor strategy when defense is collapsed (no or low demolisher score)
+
+        return 
+
+# Level 2 Utilities
+
+    ### Defense
+
+    def interceptor_guerrilla_warfare():
+        # Deploys interceptors in random regions to eat up demolishers and scouts
+
+        return 
+
+    def defensive_loc():
+        # Controls loc to deviate opponent to take a difficult path
+
+        return 
+
+    def motion_less_blockage():
+        # Blocks all the paths of opponent to save mobile points
+
+        return 
+    
+
+
+
+    ### Attacking
+
+    def demolisher_loc():
+        # Controls loc to facilitate demolishers attacking frontline defense
+
+        return 
+
+    def demolisher_interceptor():
+        # Continous deployment of demolisher interceptor pairs
+        # Clear the already weak path for the slow moving interceptors
+
+        return
+
+    def touch_it_scout():
+        # Scout deployement strategy
+
+        return
+
+    def interceptor_attack():
+        # Interseptor deployement strategy
+
+        return 
+    
+
+    def bandit_attack():
+        # Most unused
+
+        return 
+
+
+    ### Sanity & Inspection
+
+    def strength_report():
+        # overall defense strength
+
+        return 
+    
+    def border_weakness_report():
+        # easily attackble region at y = 15
+
+        return 
+    
+    def path_danger_report():
+        # Score the paths based on the predicted attack possible
+        # scout score..
+
+        return 
+
+    def attack_prone_area_report():
+        # Area under potential threat
+
+        return 
+    
+    def skeleton_fracture_report():
+        # Regions that are damaged
+
+        return
+
+    def dday_bunker_strength_report():
+        # Head of the defense strength and attack capacity report
+        # demolisher control score
+
+        return 
+
+    ### Utility functions 
+
+    
+
+
+
+    # Our strategy ends here
 
     """
     NOTE: All the methods after this point are part of the sample starter-algo
