@@ -63,49 +63,53 @@ class AlgoStrategy(gamelib.AlgoCore):
 
     """Our Strategy.com"""
     
-    def GOLAKS(game_state):
-        vajra_kawachadhara(game_state)
+    def GOLAKS(self, game_state):
+        self.vajra_kawachadhara(game_state)
         return
         
    
-
+    
    
 
 # Level 1 abstraction 
-    def vajra_kawachadhara(game_state):
+    def vajra_kawachadhara(self, game_state):
         # Basic defense build up
         # Used in first 5 rounds. Opening move
+        # return 
         if(game_state.turn_number<3) :
-            interceptor_loc = intial_interceptor_loc()
+            interceptor_loc = [[11,2],[16,2],[16,2],[6,7],[21,7]]
             game_state.attempt_spawn(INTERCEPTOR,interceptor_loc)
             return 
-        wall_locations,turret_locations=hardcoded()
+        wall_locations,turret_locations = self.hardcoded()
+        game_state.attempt_spawn(WALL,wall_locations)
+        game_state.attempt_spawn(TURRET,turret_locations)
+
         return
     
     
     
-    def pothuraju(gmae_state):
+    def kala_bhairava(self, game_state):
         # Maintainance of defense
         # Upgrades defense system in a timely fashion
 
         return
 
-    def aswadalam(game_state):
+    def aswadalam(self, game_state):
         # Controls the loc and deploys demolishers to weaken the defense
 
         return 
 
-    def vishalakshi(game_state):
+    def vishalakshi(self, game_state):
         # Fetches points - Fast moving healthy units
 
         return
     
-    def aayurvathi(game_state):
+    def aayurvathi(self, game_state):
         # Deploys support units in a timely fashion
 
         return 
 
-    def eedhi_maranam(game_state):
+    def eedhi_maranam(self, game_state):
         # Interceptor strategy when defense is collapsed (no or low demolisher score)
 
         return 
@@ -114,39 +118,6 @@ class AlgoStrategy(gamelib.AlgoCore):
 
     ### Defense
 
-    def hardcoded():
-        x=28
-        y=14
-        
-        wall_locations=[[26,13],[24,13]]
-        for i in range(10):
-            x=x-1
-            y=y-1
-            wall_locations.append([x,y])
-        y=y+1
-        for i in range(7):
-            x=x-1
-            wall_locations.append([x,y])
-        for i in range(4):
-            x=x-1
-            y=y+1
-            wall_locations.append([x,y])
-
-        x=-1
-        y=13
-
-        for i in range(3):
-            x=x+1
-            wall_locations.append([x,y])
-
-        wall_locations.append([[4,13],[4,12],[3,11]])
-        turret_locations=[[3,13],[3,12],[25,13],[6,9],[7,8]]
-
-        return [wall_locations,turret_locations]
-
-    def intial_interceptor_loc():
-        interceptor_loc= [[11,2],[16,2],[16,2],[6,7],[21,7]]
-        return interceptor_loc
             
     def interceptor_guerrilla_warfare():
         # Deploys interceptors in random regions to eat up demolishers and scouts
@@ -233,6 +204,41 @@ class AlgoStrategy(gamelib.AlgoCore):
         return 
 
     ### Utility functions 
+
+    def hardcoded(self):
+        x=28
+        y=14
+        
+        wall_locations=[[26,13],[24,13]]
+        for i in range(10):
+            x=x-1
+            y=y-1
+            wall_locations.append([x,y])
+        y=y+1
+        for i in range(7):
+            x=x-1
+            wall_locations.append([x,y])
+        for i in range(4):
+            x=x-1
+            y=y+1
+            wall_locations.append([x,y])
+
+        x=-1
+        y=13
+
+        for i in range(3):
+            x=x+1
+            wall_locations.append([x,y])
+
+        wall_locations.append([4,13])
+        
+        wall_locations.append([4,12])
+        wall_locations.append([3,11])
+
+
+        turret_locations=[[3,13],[3,12],[25,13],[6,9],[7,8]]
+
+        return [wall_locations,turret_locations]
 
     
 
