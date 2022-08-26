@@ -69,6 +69,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.vajra_kawachadhara(game_state)
         self.aayurvathi(game_state)
         self.kala_bhairava(game_state)
+        self.demolisher_loc(game_state)
+
         return
         
    
@@ -131,6 +133,10 @@ class AlgoStrategy(gamelib.AlgoCore):
             
     def interceptor_guerrilla_warfare():
         # Deploys interceptors in random regions to eat up demolishers and scouts
+
+        pos = random.randint(0,3)
+        interceptor_pos = [[3+pos,13-pos]]
+        game_state.attempt_spawn(INTERCEPTOR,interceptor_pos,5)
         return 
         
 
@@ -151,16 +157,29 @@ class AlgoStrategy(gamelib.AlgoCore):
 
     ### Attacking
 
-    def demolisher_loc():
+    def demolisher_loc(self,game_state,size=0):
         # Controls loc to facilitate demolishers attacking frontline defense
+        wl = [[5,12]]
+        wl += [[x, 13] for x in range(6,10+3*size)]
+        game_state.attempt_spawn(WALL,wl)
 
-        return 
 
-    def demolisher_interceptor():
+
+        
+
+    def demolisher_interceptor(self,game_state,edge):
         # Continous deployment of demolisher interceptor pairs
         # Clear the already weak path for the slow moving interceptors
+        demolisher_loc = [[3,10]]
+        game_state.attempt_spawn(DEMOLISHER,demolisher_loc,1)
+        interceptor_loc = []
+        pos = random.randint(0,2)
+        if(edge==0) :
+            interceptor_loc = [[4+pos,9+pos]]
+        else :
+            interceptor_loc = [[14+pos,0+pos]]
+        game_state.attempt_spawn(INTERCEPTOR,interceptor_loc,1)
 
-        return
 
     def touch_it_scout():
         # Scout deployement strategy
