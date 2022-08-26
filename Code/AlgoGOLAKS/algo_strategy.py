@@ -181,16 +181,28 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.attempt_spawn(INTERCEPTOR,interceptor_loc,1)
 
 
-    def touch_it_scout():
+    def touch_it_scout(self, game_state, location):
         # Scout deployement strategy
-
+        # Use this only from vishalakshi
+        nos = game_state.MP
+        locations = location*nos 
+        game_state.attempt_spawn(SCOUT, locations)
         return
 
-    def interceptor_attack(self, game_state):
+    def interceptor_attack(self, game_state, random_state=0, nos=3):
         # Interseptor deployement strategy
-        if(game_state.turn_number<5):
-            interceptor_loc = [[11,2],[16,2],[16,2],[6,7],[21,7]]
-            game_state.attempt_spawn(INTERCEPTOR,interceptor_loc)
+
+        if(random_state==0):
+            locations = [[9,4], [14, 0], [10,3], [14, 0], [10,3]]
+            game_state.attmept_spawn(INTERCEPTOR, locations)
+        else:
+            locations = [[9,4], [6, 7], [14, 0], [13, 0]]
+            spawn = []
+            for i in range(nos):
+                ri = random.randint(4)
+                spawn.append(locations[ri])
+            game_state.attempt_spawn(INTERCEPTOR, spawn)
+            
         
        
     
