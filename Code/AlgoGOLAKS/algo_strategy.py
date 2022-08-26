@@ -64,7 +64,11 @@ class AlgoStrategy(gamelib.AlgoCore):
     """Our Strategy.com"""
     
     def GOLAKS(self, game_state):
+        if(game_state.turn_number<4):
+            self.interceptor_attack(game_state)
         self.vajra_kawachadhara(game_state)
+        self.aayurvathi(game_state)
+        self.kala_bhairava(game_state)
         return
         
    
@@ -76,15 +80,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Basic defense build up
         # Used in first 5 rounds. Opening move
         # return 
-        if(game_state.turn_number<3) :
-            interceptor_loc = [[11,2],[16,2],[16,2],[6,7],[21,7]]
-            game_state.attempt_spawn(INTERCEPTOR,interceptor_loc)
-            return 
-        wall_locations,turret_locations = self.hardcoded()
+        wall_locations,turret_locations= self.hc()
         game_state.attempt_spawn(WALL,wall_locations)
         game_state.attempt_spawn(TURRET,turret_locations)
-
-        return
     
     
     
@@ -92,7 +90,17 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Maintainance of defense
         # Upgrades defense system in a timely fashion
 
-        return
+        wl1 = [[4,13], [4,12]]
+        wl2 =  [[7, 8], [8, 7], [9, 6], [24, 13]]
+        tl1 = [[3, 12], [3, 11], [6, 9], [7, 8]]
+        tl2 = [ [25,13]]
+        sl = [[2,12], [8,7]]
+        game_state.attempt_upgrade(tl1)
+        game_state.attempt_upgrade(wl1)
+        game_state.attempt_upgrade(tl2)
+        game_state.attempt_upgrade(wl2)
+        game_state.attempt_upgrade(sl)
+        return 
 
     def aswadalam(self, game_state):
         # Controls the loc and deploys demolishers to weaken the defense
@@ -106,6 +114,8 @@ class AlgoStrategy(gamelib.AlgoCore):
     
     def aayurvathi(self, game_state):
         # Deploys support units in a timely fashion
+        support_locations =  [[2,12], [8,7]]
+        game_state.attempt_spawn(SUPPORT,support_locations)
 
         return 
 
@@ -157,10 +167,13 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         return
 
-    def interceptor_attack():
+    def interceptor_attack(self, game_state):
         # Interseptor deployement strategy
-
-        return 
+        if(game_state.turn_number<5):
+            interceptor_loc = [[11,2],[16,2],[16,2],[6,7],[21,7]]
+            game_state.attempt_spawn(INTERCEPTOR,interceptor_loc)
+        
+       
     
 
     def bandit_attack():
@@ -204,41 +217,23 @@ class AlgoStrategy(gamelib.AlgoCore):
         return 
 
     ### Utility functions 
-
-    def hardcoded(self):
+    def hc(self):
         x=28
         y=14
-        
-        wall_locations=[[26,13],[24,13]]
-        for i in range(10):
-            x=x-1
-            y=y-1
-            wall_locations.append([x,y])
-        y=y+1
-        for i in range(7):
-            x=x-1
-            wall_locations.append([x,y])
-        for i in range(4):
-            x=x-1
-            y=y+1
-            wall_locations.append([x,y])
 
-        x=-1
-        y=13
+        # wall skeleton
+        wl = [[26,13]]
+        wl += [[x, x-14] for x in range(18,28)]
+        wl += [[x, 5] for x in range(11,18)]
+        wl += [[x, 16-x] for x in range(7,11)]
+        wl += [[x,13] for x in range(0,5)]
+        wl += [[4, y] for y in range(11, 13)]
 
-        for i in range(3):
-            x=x+1
-            wall_locations.append([x,y])
+        # turret locations
+        tl = [[3, 12], [3, 11], [6, 9], [7, 8], [25,13]]
 
-        wall_locations.append([4,13])
-        
-        wall_locations.append([4,12])
-        wall_locations.append([3,11])
-
-
-        turret_locations=[[3,13],[3,12],[25,13],[6,9],[7,8]]
-
-        return [wall_locations,turret_locations]
+        # support locations
+        return (wl, tl)
 
     
 
