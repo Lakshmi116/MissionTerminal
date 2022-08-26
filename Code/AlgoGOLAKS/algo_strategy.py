@@ -81,8 +81,21 @@ class AlgoStrategy(gamelib.AlgoCore):
             self.interceptor_attack(game_state, random_state=1)
             self.kala_bhairava(game_state)
         
-   
+# Never self destruct
+# Consistency > Surprise Attack (not always)
+
+# Level 0 Abstraction
+
+    def setDefenseControl(self, game_state):
+        # Defense checks and restoration
+        # Defense upgradation
+        # Go Hand in with attack module to know it's structure points requriements
+        return
     
+    def setAttackStrategy(self, game_state):
+        # Deployement strategy using MP
+        # Structure points required only for loc (sp:[6, 9])
+        return 
    
 
 # Level 1 abstraction 
@@ -160,7 +173,13 @@ class AlgoStrategy(gamelib.AlgoCore):
         pos = random.randint(0,3)
         interceptor_pos = [[3+pos,13-pos]]
         game_state.attempt_spawn(INTERCEPTOR,interceptor_pos,5)
+        return
+    
+    def antiFoxDefense(self, game_state):
+        # Defense strategy to contuor enemy's fox strategy
+
         return 
+
 
 
     def motion_less_blockage():
@@ -303,6 +322,15 @@ class AlgoStrategy(gamelib.AlgoCore):
         pw = [self.wall_health(game_state, location)/wh for location in self.prime_walls]
 
         return (bt, pw) 
+    
+    def isFoxAttack(self, game_state):
+        # When the enemy uses anti mirror structure to attack the bottom right wall end
+        # Only one path possible for left and right deployment
+        # Atlantic path
+        # Motion less blockage could be possible
+        # If Motion possible Enhace the defense at bottom right end to weaken enemy mobile at right corner
+
+        return 
 
     ### Utility functions 
     def hc(self):
