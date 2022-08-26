@@ -131,7 +131,7 @@ class AlgoStrategy(gamelib.AlgoCore):
     ### Defense
 
             
-    def interceptor_guerrilla_warfare():
+    def interceptor_guerrilla_warfare(self, game_state):
         # Deploys interceptors in random regions to eat up demolishers and scouts
 
         pos = random.randint(0,3)
@@ -208,16 +208,37 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         return 
     
-    def border_weakness_report():
+    def border_weakness_report(self, game_state):
         # easily attackble region at y = 15
+        # returns the x location for the weakest zone
+
+        weakest_x = 9
+        weakness = 100
+        for i in range(28):
+            shields = len(game_state.get_attackers([i, 14], 0))
+            if(shields<weakness):
+                weakness = shields
+                weakest_x = i
+        return weakest_x 
 
         return 
     
-    def path_danger_report():
+    def path_danger_report(self, game_state):
         # Score the paths based on the predicted attack possible
         # scout score..
 
-        return 
+        start_x = [[13,0], [14,0]]
+        paths = [game_state.find_path_to_edge(location) for location in start_x]
+
+        # scout score = number of scouts required to make it until the end
+        #  = total damage possible in the path/ scout tolerance
+        #  scout tolerance depends on the shielding (basic + shielding points)
+        attack_report = {}
+        for path in paths:
+            attack_report[path[0][0]] = [len(game_state.get_attackers(location, 0))*gamelib.GameUnit(TURRET, game_state.config).damage_i for location in path]
+            
+        return attack_report 
+
 
     def attack_prone_area_report():
         # Area under potential threat
