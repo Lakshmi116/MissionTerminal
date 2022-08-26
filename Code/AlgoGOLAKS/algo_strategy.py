@@ -1,3 +1,4 @@
+from distutils.spawn import spawn
 import gamelib
 import random
 import math
@@ -25,6 +26,15 @@ class AlgoStrategy(gamelib.AlgoCore):
         seed = random.randrange(maxsize)
         random.seed(seed)
         gamelib.debug_write('Random seed: {}'.format(seed))
+
+        self.bunker_turrets = [[3, 12], [3, 11], [6, 9], [7, 8], [7, 9]]
+        self.prime_walls = [[7, 10], [6, 10], [8, 9], [8, 10], [4, 13], [4, 12], [4, 11], [3, 13]]
+
+        self.bottom_right_walls = [[x, x-14] for x in range(18,28)] # Bottom Right wall
+        self.bottom_walls = [[x, 5] for x in range(11,18)]          # Bottom wall
+        self.bunker_tail = [[x, 16-x] for x in range(7,10)]         # Bunker Tail
+        self.top_left_walls = [[x,13] for x in range(0,3)]         # Top Left Corner
+
 
     def on_game_start(self, config):
         """ 
@@ -64,14 +74,12 @@ class AlgoStrategy(gamelib.AlgoCore):
     """Our Strategy.com"""
     
     def GOLAKS(self, game_state):
-        if(game_state.turn_number<4):
-            self.interceptor_attack(game_state)
-        self.vajra_kawachadhara(game_state)
-        self.aayurvathi(game_state)
-        self.kala_bhairava(game_state)
-        self.demolisher_loc(game_state)
-
-        return
+        if(game_state.turn_number<5):
+            self.interceptor_attack(game_state, random_state=0)
+        else:
+            self.vajra_kawachadhara(game_state)
+            self.interceptor_attack(game_state, random_state=1)
+            self.kala_bhairava(game_state)
         
    
     
@@ -106,12 +114,27 @@ class AlgoStrategy(gamelib.AlgoCore):
 
     def aswadalam(self, game_state):
         # Controls the loc and deploys demolishers to weaken the defense
+        weak_x = self.border_weakness_report(game_state)
+        self.demolisher_loc(game_state, (weak_x>14))
+        self.demolisher_interceptor(game_state)
+
 
         return 
 
     def vishalakshi(self, game_state):
         # Fetches points - Fast moving healthy units
+        attack_report = self.path_danger_report(game_state)
 
+        locations = [[13,0], [14, 0]]
+        right = -1 
+        for path_report in attack_report:
+            right+=1
+            damage = 0
+            for i in path_report:
+                damage+=i 
+            if damage < 20:
+                self.touch_it_scout(game_state,toleft=right)
+                break 
         return
     
     def aayurvathi(self, game_state):
@@ -138,17 +161,12 @@ class AlgoStrategy(gamelib.AlgoCore):
         interceptor_pos = [[3+pos,13-pos]]
         game_state.attempt_spawn(INTERCEPTOR,interceptor_pos,5)
         return 
-        
 
-    def defensive_loc():
-        # Controls loc to deviate opponent to take a difficult path
-   
-
-
-        return 
 
     def motion_less_blockage():
         # Blocks all the paths of opponent to save mobile points
+        # Time complexity is a bit high for the value it adds to the strategy
+        # Implement at the end if time permits
 
         return 
     
@@ -163,11 +181,15 @@ class AlgoStrategy(gamelib.AlgoCore):
         wl += [[x, 13] for x in range(6,10+3*size)]
         game_state.attempt_spawn(WALL,wl)
 
+        # Making the recent wall temporary
+        game_state.attempt_remove(wl)
+        return 
+
 
 
         
 
-    def demolisher_interceptor(self,game_state,edge):
+    def demolisher_interceptor(self,game_state,edge=0):
         # Continous deployment of demolisher interceptor pairs
         # Clear the already weak path for the slow moving interceptors
         demolisher_loc = [[3,10]]
@@ -181,10 +203,13 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.attempt_spawn(INTERCEPTOR,interceptor_loc,1)
 
 
-    def touch_it_scout(self, game_state, location):
+    def touch_it_scout(self, game_state, toleft=0):
         # Scout deployement strategy
         # Use this only from vishalakshi
-        nos = game_state.MP
+        location = [13, 0]
+        if toleft!=0:
+            location = [14, 0]
+        nos = math.floor(game_state.MP)
         locations = location*nos 
         game_state.attempt_spawn(SCOUT, locations)
         return
@@ -194,12 +219,12 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         if(random_state==0):
             locations = [[9,4], [14, 0], [10,3], [14, 0], [10,3]]
-            game_state.attmept_spawn(INTERCEPTOR, locations)
+            game_state.attempt_spawn(INTERCEPTOR, locations)
         else:
             locations = [[9,4], [6, 7], [14, 0], [13, 0]]
             spawn = []
             for i in range(nos):
-                ri = random.randint(4)
+                ri = random.randint(0,len(locations)-1)
                 spawn.append(locations[ri])
             game_state.attempt_spawn(INTERCEPTOR, spawn)
             
@@ -214,11 +239,6 @@ class AlgoStrategy(gamelib.AlgoCore):
 
 
     ### Sanity & Inspection
-
-    def strength_report():
-        # overall defense strength
-
-        return 
     
     def border_weakness_report(self, game_state):
         # easily attackble region at y = 15
@@ -252,42 +272,63 @@ class AlgoStrategy(gamelib.AlgoCore):
         return attack_report 
 
 
-    def attack_prone_area_report():
-        # Area under potential threat
-
-        return 
     
-    def skeleton_fracture_report():
+    def skeleton_fracture_report(self, game_state):
         # Regions that are damaged
+        # Checks for Bottom Right, Bottom wall and Bunker Tail
+        wh = gamelib.GameUnit(WALL, game_state.config).max_health
+        
+        brw = []
+        for location in self.bottom_right_walls:
+            brw.append(location.append(self.wall_health(game_state, location)/wh))
+        bw = []
+        for location in self.bottom_walls:
+            bw.append(location.append(self.wall_health(game_state, location)/wh))
+        tlw = []
+        for location in self.top_left_walls:
+            tlw.append(location.append(self.wall_health(game_state, location)/wh))
+        btw = []
+        for location in self.bunker_tail:
+            btw.append(location.append(self.wall_health(game_state, location)/wh))
+        return (brw, bw, tlw, btw)
 
-        return
-
-    def dday_bunker_strength_report():
+    def dday_bunker_strength_report(self, game_state):
         # Head of the defense strength and attack capacity report
         # demolisher control score
 
-        return 
+        # returns the state of bunker turrets and prime walls
+        th = gamelib.GameUnit(TURRET, game_state.config).max_health
+        wh = gamelib.GameUnit(WALL, game_state.config).max_health
+        bt = [self.turret_health(game_state, location)/th for location in self.bunker_turrets]
+        pw = [self.wall_health(game_state, location)/wh for location in self.prime_walls]
+
+        return (bt, pw) 
 
     ### Utility functions 
     def hc(self):
-        x=28
-        y=14
-
         # wall skeleton
-        wl = [[26,13]]
-        wl += [[x, x-14] for x in range(18,28)]
-        wl += [[x, 5] for x in range(11,18)]
-        wl += [[x, 16-x] for x in range(7,11)]
-        wl += [[x,13] for x in range(0,5)]
-        wl += [[4, y] for y in range(11, 13)]
+        wl = self.prime_walls
+        wl += self.bottom_right_walls  # Bottom Right wall
+        wl += self.bottom_walls   # Bottom wall
+        wl += self.bunker_tail  # Bunker Tail
+        wl += self.top_left_walls  # Top Left Corner
 
         # turret locations
-        tl = [[3, 12], [3, 11], [6, 9], [7, 8], [25,13]]
-
-        # support locations
+        tl = self.bunker_turrets
         return (wl, tl)
 
+    def wall_health(self, game_state, location):
+        item = game_state.game_map.__getitem__(location)
+        if item.unit_type != game_state.config["unitInformation"][0]["shorthand"]:
+            return -120
+        return item.health
     
+    def turret_health(self, game_state, location):
+        item = game_state.game_map.__getitem__(location)
+        if item.unit_type != game_state.config["unitInformation"][1]["shorthand"]:
+            return -150
+        return item.health
+
 
 
 
