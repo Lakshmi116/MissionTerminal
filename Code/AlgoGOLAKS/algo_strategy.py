@@ -19,7 +19,6 @@ Advanced strategy tips:
   board states. Though, we recommended making a copy of the map to preserve 
   the actual current map state.
 """
-
 class AlgoStrategy(gamelib.AlgoCore):
     def __init__(self):
         super().__init__()
@@ -29,11 +28,28 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         self.bunker_turrets = [[3, 12], [3, 11], [6, 9], [7, 8], [7, 9]]
         self.prime_walls = [[7, 10], [6, 10], [8, 9], [8, 10], [4, 13], [4, 12], [4, 11], [3, 13]]
+        self.heavy_bunker_turrets = [[4, 9], [9, 10]]
 
         self.bottom_right_walls = [[x, x-14] for x in range(18,28)] # Bottom Right wall
         self.bottom_walls = [[x, 5] for x in range(11,18)]          # Bottom wall
         self.bunker_tail = [[x, 16-x] for x in range(7,10)]         # Bunker Tail
         self.top_left_walls = [[x,13] for x in range(0,3)]         # Top Left Corner
+
+        # Strategy Timers used to control the resources for the strategies
+        # These timers are used whenever waiting is required for the strategy
+        self.st_dem = 100
+        self.st_sudden_defense = 100
+        self.st_int_dem = 100
+        self.st_scout_bot = 100
+
+        # Strategy flags to represent that the online strategies
+        self.sf_dem = False
+        self.sf_sudden_defense = False
+        self.sf_int_dem = False
+        self.sf_scout_bot = False 
+
+
+
 
 
     def on_game_start(self, config):
@@ -146,7 +162,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             for i in path_report:
                 damage+=i 
             if damage < 20:
-                self.touch_it_scout(game_state,toleft=right)
+                self.touch_it_scout(game_state,toLeft=right)
                 break 
         return
     
@@ -190,45 +206,55 @@ class AlgoStrategy(gamelib.AlgoCore):
         return 
     
 
-
-
     ### Attacking
 
     def demolisher_loc(self,game_state,size=0):
         # Controls loc to facilitate demolishers attacking frontline defense
-        wl = [[5,12]]
-        wl += [[x, 13] for x in range(6,10+3*size)]
+        wl = [[x, 13] for x in range(5,10+3*size)]
         game_state.attempt_spawn(WALL,wl)
 
         # Making the recent wall temporary
         game_state.attempt_remove(wl)
         return 
 
+    def only_demolisher(self, game_state, toLeft=0, atTop=0, max_nos=8):
 
+        # Funtion to deploy only demolishers 
+
+        location = [[10, 3]]
+        if (toLeft!=0):
+            location = [[14, 0]]
+        if (atTop!=0):
+            location = [[5,8]]
+        nos = min(max_nos,math.floor(game_state.get_resources(1))%(gamelib.GameUnit(DEMOLISHER, game_state.config).cost))
+        game_state.attempt_spawn(INTERCEPTOR, location, nos)
+        return 
 
         
 
-    def demolisher_interceptor(self,game_state,edge=0):
+    def demolisher_interceptor(self,game_state, attackToLeft=0, defenseToLeft=0):
         # Continous deployment of demolisher interceptor pairs
         # Clear the already weak path for the slow moving interceptors
-        demolisher_loc = [[3,10]]
-        game_state.attempt_spawn(DEMOLISHER,demolisher_loc,1)
-        interceptor_loc = []
-        pos = random.randint(0,2)
-        if(edge==0) :
-            interceptor_loc = [[4+pos,9+pos]]
-        else :
-            interceptor_loc = [[14+pos,0+pos]]
-        game_state.attempt_spawn(INTERCEPTOR,interceptor_loc,1)
+        int_location = [[5,8]]
+        dem_location = [[5,8]]
+        if(attackToLeft!=0):
+            dem_location = [[14, 0]]
+        if(defenseToLeft!=0):
+            int_location = [[14, 0]]
+        dem_nos = (math.floor(game_state.get_resources(1))-1)%(gamelib.GameUnit(DEMOLISHER, game_state.config).cost)
+        game_state.attempt_spawn(INTERCEPTOR,int_location,1)
+        game_state.attempt_spawn(DEMOLISHER, dem_location,dem_nos)
+        int_nos = (math.floor(game_state.get_resources(1)))%(gamelib.GameUnit(INTERCEPTOR, game_state.config).cost)
+        game_state.attempt_spawn(INTERCEPTOR, int_location, int_nos)
+        return 
 
-
-    def touch_it_scout(self, game_state, toleft=0):
+    def touch_it_scout(self, game_state, toLeft=0):
         # Scout deployement strategy
         # Use this only from vishalakshi
         location = [13, 0]
-        if toleft!=0:
+        if toLeft!=0:
             location = [14, 0]
-        nos = math.floor(game_state.MP)
+        nos = math.floor(game_state.get_resources(1))
         locations = location*nos 
         game_state.attempt_spawn(SCOUT, locations)
         return
@@ -248,11 +274,10 @@ class AlgoStrategy(gamelib.AlgoCore):
             game_state.attempt_spawn(INTERCEPTOR, spawn)
             
         
-       
-    
+
 
     def bandit_attack():
-        # Most unused
+        # Sureprise attack from the woods
 
         return 
 
@@ -321,7 +346,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         bt = [self.turret_health(game_state, location)/th for location in self.bunker_turrets]
         pw = [self.wall_health(game_state, location)/wh for location in self.prime_walls]
 
-        return (bt, pw) 
+        return (bt, pw)
     
     def isFoxAttack(self, game_state):
         # When the enemy uses anti mirror structure to attack the bottom right wall end
@@ -356,6 +381,11 @@ class AlgoStrategy(gamelib.AlgoCore):
         if item.unit_type != game_state.config["unitInformation"][1]["shorthand"]:
             return -150
         return item.health
+    
+    def save_mobile(self, game_state, goal=0, spendAllowance=0, rounds=0):
+        # Use this function to save Mobile points for any future operations
+
+        return
 
 
 
