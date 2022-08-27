@@ -35,6 +35,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.bunker_tail = [[x, 16-x] for x in range(7,10)]         # Bunker Tail
         self.top_left_walls = [[x,13] for x in range(0,3)]         # Top Left Corner
 
+
         # Strategy Timers used to control the resources for the strategies
         # These timers are used whenever waiting is required for the strategy
         self.st_dem = 100
@@ -154,7 +155,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Fetches points - Fast moving healthy units
         attack_report = self.path_danger_report(game_state)
 
-        locations = [[13,0], [14, 0]]
+        # locations = [[13,0], [14, 0]]
         right = -1 
         for path_report in attack_report:
             right+=1
@@ -163,8 +164,7 @@ class AlgoStrategy(gamelib.AlgoCore):
                 damage+=i 
             if damage < 20:
                 self.touch_it_scout(game_state,toLeft=right)
-                break 
-        return
+                return
     
     def aayurvathi(self, game_state):
         # Deploys support units in a timely fashion
@@ -217,7 +217,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.attempt_remove(wl)
         return 
 
-    def only_demolisher(self, game_state, toLeft=0, atTop=0, max_nos=8):
+    def only_demolisher(self, game_state, toLeft=0, atTop=0, max_nos=9):
 
         # Funtion to deploy only demolishers 
 
@@ -226,7 +226,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             location = [[14, 0]]
         if (atTop!=0):
             location = [[5,8]]
-        nos = min(max_nos,math.floor(game_state.get_resources(1))%(gamelib.GameUnit(DEMOLISHER, game_state.config).cost))
+        nos = min(max_nos,math.floor(game_state.get_resources(1))//(gamelib.GameUnit(DEMOLISHER, game_state.config).cost))
         game_state.attempt_spawn(INTERCEPTOR, location, nos)
         return 
 
@@ -241,22 +241,21 @@ class AlgoStrategy(gamelib.AlgoCore):
             dem_location = [[14, 0]]
         if(defenseToLeft!=0):
             int_location = [[14, 0]]
-        dem_nos = (math.floor(game_state.get_resources(1))-1)%(gamelib.GameUnit(DEMOLISHER, game_state.config).cost)
+        dem_nos = (math.floor(game_state.get_resources(1))-1)//(gamelib.GameUnit(DEMOLISHER, game_state.config).cost)
         game_state.attempt_spawn(INTERCEPTOR,int_location,1)
         game_state.attempt_spawn(DEMOLISHER, dem_location,dem_nos)
-        int_nos = (math.floor(game_state.get_resources(1)))%(gamelib.GameUnit(INTERCEPTOR, game_state.config).cost)
+        int_nos = (math.floor(game_state.get_resources(1)))//(gamelib.GameUnit(INTERCEPTOR, game_state.config).cost)
         game_state.attempt_spawn(INTERCEPTOR, int_location, int_nos)
         return 
 
     def touch_it_scout(self, game_state, toLeft=0):
         # Scout deployement strategy
         # Use this only from vishalakshi
-        location = [13, 0]
+        location = [[13, 0]]
         if toLeft!=0:
-            location = [14, 0]
+            location = [[14, 0]]
         nos = math.floor(game_state.get_resources(1))
-        locations = location*nos 
-        game_state.attempt_spawn(SCOUT, locations)
+        game_state.attempt_spawn(SCOUT, location,nos)
         return
 
     def interceptor_attack(self, game_state, random_state=0, nos=3):
@@ -349,11 +348,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         return (bt, pw)
     
     def isFoxAttack(self, game_state):
-        # When the enemy uses anti mirror structure to attack the bottom right wall end
-        # Only one path possible for left and right deployment
-        # Atlantic path
-        # Motion less blockage could be possible
-        # If Motion possible Enhace the defense at bottom right end to weaken enemy mobile at right corner
+        # After Strategy Control
 
         return 
 
