@@ -29,12 +29,12 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.bunker_turrets = [[3, 12], [3, 11], [6, 9], [7, 8], [7, 9]]
         self.prime_walls = [[7, 10], [6, 10], [8, 9], [8, 10], [4, 13], [4, 12], [4, 11], [3, 13]]
         self.heavy_bunker_turrets = [[4, 9], [9, 10]]
-
+        self.prime_support_locations =  [[1,12],[2,12]]
+        self.suppport_locations= [[2,11],[7,4]]
         self.bottom_right_walls = [[x, x-14] for x in range(18,28)] # Bottom Right wall
         self.bottom_walls = [[x, 5] for x in range(11,18)]          # Bottom wall
-        self.bunker_tail = [[x, 16-x] for x in range(7,10)]         # Bunker Tail
+        self.bunker_tail = [[x, 16-x] for x in range(7,11)]         # Bunker Tail
         self.top_left_walls = [[x,13] for x in range(0,3)]         # Top Left Corner
-
 
         # Strategy Timers used to control the resources for the strategies
         # These timers are used whenever waiting is required for the strategy
@@ -91,12 +91,9 @@ class AlgoStrategy(gamelib.AlgoCore):
     """Our Strategy.com"""
     
     def GOLAKS(self, game_state):
-        if(game_state.turn_number<5):
-            self.interceptor_attack(game_state, random_state=0)
-        else:
-            self.vajra_kawachadhara(game_state)
-            self.interceptor_attack(game_state, random_state=1)
-            self.kala_bhairava(game_state)
+        self.setDefenseControl(game_state)
+        self.setAttackStrategy(game_state)
+        return 
         
 # Never self destruct
 # Consistency > Surprise Attack (not always)
@@ -107,6 +104,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Defense checks and restoration
         # Defense upgradation
         # Go Hand in with attack module to know it's structure points requriements
+        self.vajra_kawachadhara(game_state)
+        self.aayurvathi(game_state)
         return
     
     def setAttackStrategy(self, game_state):
@@ -120,9 +119,18 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Basic defense build up
         # Used in first 5 rounds. Opening move
         # return 
-        wall_locations,turret_locations= self.hc()
-        game_state.attempt_spawn(WALL,wall_locations)
-        game_state.attempt_spawn(TURRET,turret_locations)
+        if(game_state.turn_number<3):
+            self.interceptor_attack(game_state)
+        elif(game_state.turn_number==3):
+            self.build_defense(game_state)
+         
+            
+
+
+    
+         
+
+        
     
     
     
@@ -168,9 +176,9 @@ class AlgoStrategy(gamelib.AlgoCore):
     
     def aayurvathi(self, game_state):
         # Deploys support units in a timely fashion
-        support_locations =  [[2,12], [8,7]]
-        game_state.attempt_spawn(SUPPORT,support_locations)
-
+        if(game_state.turn_number==3):
+            game_state.attempt_spawn(SUPPORT,self.prime_support_locations)
+            game_state.attempt_spawn(SUPPORT,self.suppport_locations)
         return 
 
     def eedhi_maranam(self, game_state):
@@ -353,7 +361,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         return 
 
     ### Utility functions 
-    def hc(self):
+    def  build_defense(self,game_state):
         # wall skeleton
         wl = self.prime_walls
         wl += self.bottom_right_walls  # Bottom Right wall
@@ -363,18 +371,20 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         # turret locations
         tl = self.bunker_turrets
-        return (wl, tl)
+        game_state.attempt_spawn(WALL,wl)
+        game_state.attempt_spawn(TURRET,tl)
+        return 
 
     def wall_health(self, game_state, location):
         item = game_state.game_map.__getitem__(location)
-        if item.unit_type != game_state.config["unitInformation"][0]["shorthand"]:
-            return -120
+        if item[0].unit_type != game_state.config["unitInformation"][0]["shorthand"]:
+            return 0
         return item.health
     
     def turret_health(self, game_state, location):
         item = game_state.game_map.__getitem__(location)
-        if item.unit_type != game_state.config["unitInformation"][1]["shorthand"]:
-            return -150
+        if item[0].unit_type != game_state.config["unitInformation"][1]["shorthand"]:
+            return 0
         return item.health
     
     def save_mobile(self, game_state, goal=0, spendAllowance=0, rounds=0):
