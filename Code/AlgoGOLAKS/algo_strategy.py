@@ -1,4 +1,5 @@
 from distutils.spawn import spawn
+import queue
 import gamelib
 import random
 import math
@@ -19,6 +20,29 @@ Advanced strategy tips:
   board states. Though, we recommended making a copy of the map to preserve 
   the actual current map state.
 """
+class Scheduler():
+
+
+    def __init__(self):
+        self.only_int = 0
+        self.dem_int = 1
+        self.only_dem = 2
+        self.tasks = queue()
+    def add(self, strategy):
+        self.tasks.push(strategy)
+    
+    def excecute():
+        # Do Code
+        return 
+    
+    def remove(self,):
+        # Remove the strategy
+        return 
+    
+    def getNextStrategy(self):
+        # Strategy 
+        return 
+
 class AlgoStrategy(gamelib.AlgoCore):
     def __init__(self):
         super().__init__()
@@ -123,16 +147,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             self.interceptor_attack(game_state)
         elif(game_state.turn_number==3):
             self.build_defense(game_state)
-         
-            
 
-
-    
-         
-
-        
-    
-    
     
     def kala_bhairava(self, game_state):
         # Maintainance of defense
