@@ -36,8 +36,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.suppport_locations= [[2,11],[7,4]]
 
         self.prime_walls = [[7, 10], [6, 10], [8, 9], [8, 10], [4, 13], [4, 12], [4, 11], [3, 13]]
-        self.bottom_right_walls = [[x, x-14] for x in range(18,28)] # Bottom Right wall
-        self.bottom_walls = [[x, 5] for x in range(11,18)]          # Bottom wall
+        self.bottom_right_walls = [[x, x-14] for x in range(19,28)] # Bottom Right wall
+        self.bottom_walls = [[x, 5] for x in range(11,19)]          # Bottom wall
         self.bunker_tail = [[x, 16-x] for x in range(7,11)]         # Bunker Tail
         self.top_left_walls = [[x,13] for x in range(0,3)]         # Top Left Corner
 
@@ -146,14 +146,15 @@ class AlgoStrategy(gamelib.AlgoCore):
 
 
         # Touch it Scout implementation
-        pathFree = 0
-        scoutToLeft = 0
-        scout_nos = ((turn//10)+1)*10
-        scout_nos -= random.randint(0,scout_nos//2)
+            # pathFree = 0
+            # scoutToLeft = 0
+        if(turn>=3):
+            scout_nos = ((turn//10)+1)*10
+            # scout_nos -= random.randint(0,scout_nos//2)
 
-        isScout = self.vishalakshi(game_state=game_state, max_scout=scout_nos)
+            isScout = self.vishalakshi(game_state=game_state, max_scout=scout_nos)
 
-        attackToLeft = isScout-1
+            attackToLeft = isScout-1
 
         if(turn<5):
             # interceptors
@@ -191,7 +192,7 @@ class AlgoStrategy(gamelib.AlgoCore):
             if(damage_mn > damage):
                 damage_mn = damage
                 isLeft = right
-            if damage < 20:
+            if damage <2:
                 self.touch_it_scout(game_state,toLeft=right, max_nos=max_scout)
         return isLeft+1
     
@@ -206,10 +207,10 @@ class AlgoStrategy(gamelib.AlgoCore):
 
 
         game_state.attempt_upgrade(self.prime_walls)
-        game_state.attempt_upgrade(self.bottom_right_walls)
-        game_state.attempt_upgrade(self.bottom_walls)
-        game_state.attempt_upgrade(self.top_left_walls)
-        game_state.attempt_upgrade(self.bunker_tail)
+        # game_state.attempt_upgrade(self.bottom_right_walls)
+        # game_state.attempt_upgrade(self.bottom_walls)
+        # game_state.attempt_upgrade(self.top_left_walls)
+        # game_state.attempt_upgrade(self.bunker_tail)
         game_state.attempt_upgrade(self.prime_support_locations)
         game_state.attempt_upgrade(self.suppport_locations)
     
