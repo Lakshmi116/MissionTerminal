@@ -1,4 +1,5 @@
 from distutils.spawn import spawn
+from collections.abc import Iterable
 import queue
 from socket import getnameinfo
 import gamelib
@@ -30,10 +31,11 @@ class AlgoStrategy(gamelib.AlgoCore):
         gamelib.debug_write('Random seed: {}'.format(seed))
 
         self.bunker_turrets = [[3, 12], [3, 11], [6, 9], [7, 8], [7, 9]]
-        self.prime_walls = [[7, 10], [6, 10], [8, 9], [8, 10], [4, 13], [4, 12], [4, 11], [3, 13]]
         self.heavy_bunker_turrets = [[4, 9], [9, 10]]
         self.prime_support_locations =  [[1,12],[2,12]]
         self.suppport_locations= [[2,11],[7,4]]
+
+        self.prime_walls = [[7, 10], [6, 10], [8, 9], [8, 10], [4, 13], [4, 12], [4, 11], [3, 13]]
         self.bottom_right_walls = [[x, x-14] for x in range(18,28)] # Bottom Right wall
         self.bottom_walls = [[x, 5] for x in range(11,18)]          # Bottom wall
         self.bunker_tail = [[x, 16-x] for x in range(7,11)]         # Bunker Tail
@@ -51,6 +53,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.sf_sudden_defense = False
         self.sf_int_dem = False
         self.sf_scout_bot = False 
+
+        # strategy flags
+        self.structure_start = 5
 
 
 
@@ -120,8 +125,9 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Defense checks and restoration
         # Defense upgradation
         # Go Hand in with attack module to know it's structure points requriements
-        self.vajra_kawachadhara(game_state)
-        self.aayurvathi(game_state)
+        if(game_state.turn_number>=5):
+            self.vajra_kawachadhara(game_state)
+            self.aayurvathi(game_state)
         return
     
     def setAttackStrategy(self, game_state):
@@ -134,12 +140,20 @@ class AlgoStrategy(gamelib.AlgoCore):
         defenseToLeft = 0
         demolisherAtTop = 0
 
+        # Path damage report
+        base_locations = [[13, 0], [14, 0]]
+
+
+
         # Touch it Scout implementation
         pathFree = 0
         scoutToLeft = 0
-        scout_nos = 5
-        if(pathFree!=0):
-            self.touch_it_scout(game_state, toLeft=scoutToLeft, max_nos = scout_nos)
+        scout_nos = ((turn//10)+1)*10
+        scout_nos -= random.randint(0,scout_nos//2)
+
+        isScout = self.vishalakshi(game_state=game_state, max_scout=scout_nos)
+
+        attackToLeft = isScout-1
 
         if(turn<5):
             # interceptors
@@ -160,56 +174,52 @@ class AlgoStrategy(gamelib.AlgoCore):
    
 
 # Level 1 abstraction 
+
+    def vishalakshi(self, game_state, max_scout=15):
+        # Fetches points - Fast moving healthy units
+        attack_report = self.path_danger_report(game_state)
+
+        # locations = [[13,0], [14, 0]]
+        # return 1 if right is better than left
+        # return 2 if left is better than right
+
+        right = -1 
+        isLeft = 0
+        damage_mn = 99999999
+        for damage in attack_report:
+            right+=1
+            if(damage_mn > damage):
+                damage_mn = damage
+                isLeft = right
+            if damage < 20:
+                self.touch_it_scout(game_state,toLeft=right, max_nos=max_scout)
+        return isLeft+1
+    
     def vajra_kawachadhara(self, game_state):
         # Basic defense build up
         # Used in first 5 rounds. Opening move
         # return 
-        if(game_state.turn_number<3):
-            self.interceptor_attack(game_state)
-        elif(game_state.turn_number==3):
-            self.build_defense(game_state)
+        self.build_defense(game_state)
 
+        game_state.attempt_spawn(SUPPORT,self.prime_support_locations)
+        game_state.attempt_spawn(SUPPORT,self.suppport_locations)
+
+
+        game_state.attempt_upgrade(self.prime_walls)
+        game_state.attempt_upgrade(self.bottom_right_walls)
+        game_state.attempt_upgrade(self.bottom_walls)
+        game_state.attempt_upgrade(self.top_left_walls)
+        game_state.attempt_upgrade(self.bunker_tail)
+        game_state.attempt_upgrade(self.prime_support_locations)
+        game_state.attempt_upgrade(self.suppport_locations)
     
     def kala_bhairava(self, game_state):
         # Maintainance of defense
         # Upgrades defense system in a timely fashion
 
-        wl1 = [[4,13], [4,12]]
-        wl2 =  [[7, 8], [8, 7], [9, 6], [24, 13]]
-        tl1 = [[3, 12], [3, 11], [6, 9], [7, 8]]
-        tl2 = [ [25,13]]
-        sl = [[2,12], [8,7]]
-        game_state.attempt_upgrade(tl1)
-        game_state.attempt_upgrade(wl1)
-        game_state.attempt_upgrade(tl2)
-        game_state.attempt_upgrade(wl2)
-        game_state.attempt_upgrade(sl)
+        
         return 
 
-    def aswadalam(self, game_state):
-        # Controls the loc and deploys demolishers to weaken the defense
-        weak_x = self.border_weakness_report(game_state)
-        self.demolisher_loc(game_state, (weak_x>14))
-        self.demolisher_interceptor(game_state)
-
-
-        return 
-
-    def vishalakshi(self, game_state):
-        # Fetches points - Fast moving healthy units
-        attack_report = self.path_danger_report(game_state)
-
-        # locations = [[13,0], [14, 0]]
-        right = -1 
-        for path_report in attack_report:
-            right+=1
-            damage = 0
-            for i in path_report:
-                damage+=i 
-            if damage < 20:
-                self.touch_it_scout(game_state,toLeft=right)
-                return
-    
     def aayurvathi(self, game_state):
         # Deploys support units in a timely fashion
         if(game_state.turn_number==3):
@@ -250,10 +260,10 @@ class AlgoStrategy(gamelib.AlgoCore):
         max_dem = 2*level
         max_int = max(1,level-1)
 
-        deploy_1 = [[5,8]]
-        deploy_2 = [[13,0]]
-        deploy_3 = [[14,0]]
-        deploy_4 = [[10,3]]
+        deploy_1 = [5,8]
+        deploy_2 = [13,0]
+        deploy_3 = [14,0]
+        deploy_4 = [10,3]
 
         dem_location = deploy_4 
         int_location = deploy_1
@@ -280,7 +290,7 @@ class AlgoStrategy(gamelib.AlgoCore):
 
     def only_demolisher(self, game_state, location, max_nos=9):
         # Funtion to deploy only demolishers 
-        nos = min(max_nos,math.floor(game_state.get_resources(1))//(gamelib.GameUnit(DEMOLISHER, game_state.config).cost))
+        nos = min(max_nos, game_state.number_affordable(DEMOLISHER))
         game_state.attempt_spawn(DEMOLISHER, location, nos)
         return 
 
@@ -289,19 +299,20 @@ class AlgoStrategy(gamelib.AlgoCore):
         # By default interceptors are deployed at the bunker
         # So that by the time enemy units reach the bunker, interceptors could counter the attack
 
-        nos = min(max_nos, math.floor(game_state.get_resources(1))//(gamelib.GameUnit(INTERCEPTOR, game_state.config).cost))
+        nos = min(max_nos, game_state.number_affordable(INTERCEPTOR))
         game_state.attempt_spawn(INTERCEPTOR, location, nos)
         return 
 
 
-    def touch_it_scout(self, game_state, toLeft=0):
+    def touch_it_scout(self, game_state, toLeft=0, max_nos=10):
         # Scout deployement strategy
         # Use this only from vishalakshi
+        # return
         location = [[13, 0]]
         if toLeft!=0:
             location = [[14, 0]]
-        nos = math.floor(game_state.get_resources(1))
-        game_state.attempt_spawn(SCOUT, location,nos)
+        nos = min(max_nos, game_state.number_affordable(SCOUT))
+        game_state.attempt_spawn(SCOUT, location, nos)
         return
 
 
@@ -337,17 +348,33 @@ class AlgoStrategy(gamelib.AlgoCore):
         # Score the paths based on the predicted attack possible
         # scout score..
 
-        start_x = [[13,0], [14,0]]
-        paths = [game_state.find_path_to_edge(location) for location in start_x]
+        location_options = [[13,0], [14,0]]
+        # paths = [game_state.find_path_to_edge(location) for location in start_x]
 
         # scout score = number of scouts required to make it until the end
         #  = total damage possible in the path/ scout tolerance
         #  scout tolerance depends on the shielding (basic + shielding points)
-        attack_report = {}
-        for path in paths:
-            attack_report[path[0][0]] = [len(game_state.get_attackers(location, 0))*gamelib.GameUnit(TURRET, game_state.config).damage_i for location in path]
-            
-        return attack_report 
+        # attack_report = []
+        # for path in paths:
+        #     attack_report.append([len(game_state.get_attackers(location, 0))*gamelib.GameUnit(TURRET, game_state.config).damage_i for location in path])
+
+        # return attack_report 
+
+        damages = []
+        # Get the damage estimate each path will take
+        for location in location_options:
+            path = game_state.find_path_to_edge(location)
+            damage = 0
+            if(not isinstance(path, Iterable)):
+                damage = 250
+            else:
+                for path_location in path:
+                    # Get number of enemy turrets that can attack each location and multiply by turret damage
+                    damage += len(game_state.get_attackers(path_location, 0)) * gamelib.GameUnit(TURRET, game_state.config).damage_i
+            damages.append(damage)
+        
+        # Now just return the location that takes the least damage
+        return damages
 
 
     
