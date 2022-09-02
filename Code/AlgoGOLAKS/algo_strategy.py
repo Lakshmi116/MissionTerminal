@@ -1,5 +1,6 @@
 from distutils.spawn import spawn
 import queue
+from socket import getnameinfo
 import gamelib
 import random
 import math
@@ -20,28 +21,6 @@ Advanced strategy tips:
   board states. Though, we recommended making a copy of the map to preserve 
   the actual current map state.
 """
-class Scheduler():
-
-
-    def __init__(self):
-        self.only_int = 0
-        self.dem_int = 1
-        self.only_dem = 2
-        self.tasks = queue()
-    def add(self, strategy):
-        self.tasks.push(strategy)
-    
-    def excecute():
-        # Do Code
-        return 
-    
-    def remove(self,):
-        # Remove the strategy
-        return 
-    
-    def getNextStrategy(self):
-        # Strategy 
-        return 
 
 class AlgoStrategy(gamelib.AlgoCore):
     def __init__(self):
@@ -124,6 +103,19 @@ class AlgoStrategy(gamelib.AlgoCore):
 
 # Level 0 Abstraction
 
+    """
+    Deploying strategy
+    ----------------------------
+    clean path => touch_it_scout (from turn_number>=4 always)
+    ----------------------------
+    1. 0-5 rounds: Interceptors defend the arena
+    2. 5-10 rounds: level 1 dem_int
+    3. 10-30 rounds: level 2 dem_int
+    4. 30-40 rounds: level 3 dem_int
+    5. 40-60 rounds: level 4 dem_int
+    6. 60+ rounds: level 5 dem_int
+    """
+
     def setDefenseControl(self, game_state):
         # Defense checks and restoration
         # Defense upgradation
@@ -135,6 +127,35 @@ class AlgoStrategy(gamelib.AlgoCore):
     def setAttackStrategy(self, game_state):
         # Deployement strategy using MP
         # Structure points required only for loc (sp:[6, 9])
+        turn = game_state.turn_number
+
+
+        attackToLeft = 0
+        defenseToLeft = 0
+        demolisherAtTop = 0
+
+        # Touch it Scout implementation
+        pathFree = 0
+        scoutToLeft = 0
+        scout_nos = 5
+        if(pathFree!=0):
+            self.touch_it_scout(game_state, toLeft=scoutToLeft, max_nos = scout_nos)
+
+        if(turn<5):
+            # interceptors
+            int_location = [[5,8]]
+            self.only_interceptor(game_state,location=int_location, max_nos = 5)
+        elif(turn<10):
+            # level 1 dem_int
+            self.dem_int_implementor(game_state,level=1,attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop,defenseToLeft=defenseToLeft)
+        elif(turn<30):
+            self.dem_int_implementor(game_state, level=2, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
+        elif(turn<40):
+            self.dem_int_implementor(game_state, level=3, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
+        elif(turn<60):
+            self.dem_int_implementor(game_state, level=4, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
+        else:
+            self.dem_int_implementor(game_state, level=5, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
         return 
    
 
@@ -196,93 +217,12 @@ class AlgoStrategy(gamelib.AlgoCore):
             game_state.attempt_spawn(SUPPORT,self.suppport_locations)
         return 
 
-    def eedhi_maranam(self, game_state):
-        # Interceptor strategy when defense is collapsed (no or low demolisher score)
-
-        return 
 
 # Level 2 Utilities 
 
     ### Defense
-
-            
-    def interceptor_guerrilla_warfare(self, game_state):
-        # Deploys interceptors in random regions to eat up demolishers and scouts
-
-        pos = random.randint(0,3)
-        interceptor_pos = [[3+pos,13-pos]]
-        game_state.attempt_spawn(INTERCEPTOR,interceptor_pos,5)
-        return
-    
-    def antiFoxDefense(self, game_state):
-        # Defense strategy to contuor enemy's fox strategy
-
-        return 
-
-
-
-    def motion_less_blockage():
-        # Blocks all the paths of opponent to save mobile points
-        # Time complexity is a bit high for the value it adds to the strategy
-        # Implement at the end if time permits
-
-        return 
-    
-
-    ### Attacking
-
-    def demolisher_loc(self,game_state,size=0):
-        # Controls loc to facilitate demolishers attacking frontline defense
-        wl = [[x, 13] for x in range(5,10+3*size)]
-        game_state.attempt_spawn(WALL,wl)
-
-        # Making the recent wall temporary
-        game_state.attempt_remove(wl)
-        return 
-
-    def only_demolisher(self, game_state, toLeft=0, atTop=0, max_nos=9):
-
-        # Funtion to deploy only demolishers 
-
-        location = [[10, 3]]
-        if (toLeft!=0):
-            location = [[14, 0]]
-        if (atTop!=0):
-            location = [[5,8]]
-        nos = min(max_nos,math.floor(game_state.get_resources(1))//(gamelib.GameUnit(DEMOLISHER, game_state.config).cost))
-        game_state.attempt_spawn(INTERCEPTOR, location, nos)
-        return 
-
-        
-
-    def demolisher_interceptor(self,game_state, attackToLeft=0, defenseToLeft=0):
-        # Continous deployment of demolisher interceptor pairs
-        # Clear the already weak path for the slow moving interceptors
-        int_location = [[5,8]]
-        dem_location = [[5,8]]
-        if(attackToLeft!=0):
-            dem_location = [[14, 0]]
-        if(defenseToLeft!=0):
-            int_location = [[14, 0]]
-        dem_nos = (math.floor(game_state.get_resources(1))-1)//(gamelib.GameUnit(DEMOLISHER, game_state.config).cost)
-        game_state.attempt_spawn(INTERCEPTOR,int_location,1)
-        game_state.attempt_spawn(DEMOLISHER, dem_location,dem_nos)
-        int_nos = (math.floor(game_state.get_resources(1)))//(gamelib.GameUnit(INTERCEPTOR, game_state.config).cost)
-        game_state.attempt_spawn(INTERCEPTOR, int_location, int_nos)
-        return 
-
-    def touch_it_scout(self, game_state, toLeft=0):
-        # Scout deployement strategy
-        # Use this only from vishalakshi
-        location = [[13, 0]]
-        if toLeft!=0:
-            location = [[14, 0]]
-        nos = math.floor(game_state.get_resources(1))
-        game_state.attempt_spawn(SCOUT, location,nos)
-        return
-
     def interceptor_attack(self, game_state, random_state=0, nos=3):
-        # Interseptor deployement strategy
+        # Interceptor deployement strategy
 
         if(random_state==0):
             locations = [[9,4], [14, 0], [10,3], [14, 0], [10,3]]
@@ -294,13 +234,85 @@ class AlgoStrategy(gamelib.AlgoCore):
                 ri = random.randint(0,len(locations)-1)
                 spawn.append(locations[ri])
             game_state.attempt_spawn(INTERCEPTOR, spawn)
-            
-        
+        return 
+    
+    def antiFoxDefense(self, game_state):
+        # Defense strategy to contuor enemy's fox strategy
+
+        return 
+
+    
+   
+
+    ### Attacking
+
+    def dem_int_implementor(self, game_state, level = 6, attackToLeft=0,  demolisherAtTop=0, defenseToLeft=0,):
+        max_dem = 2*level
+        max_int = max(1,level-1)
+
+        deploy_1 = [[5,8]]
+        deploy_2 = [[13,0]]
+        deploy_3 = [[14,0]]
+        deploy_4 = [[10,3]]
+
+        dem_location = deploy_4 
+        int_location = deploy_1
+
+        # almost never use scenario
+        if(defenseToLeft!=0):
+            int_location = deploy_3 
+
+        if(demolisherAtTop!=0):
+            dem_location = deploy_1
+        elif(attackToLeft!=0):
+            dem_location = deploy_3
+
+        if(game_state.can_spawn(DEMOLISHER,dem_location,max_dem)):
+            self.only_demolisher(game_state, dem_location, max_dem)
+            self.only_interceptor(game_state, int_location, max_int)
+        elif(game_state.can_spawn(DEMOLISHER, dem_location, max_dem-2)):
+            self.only_demolisher(game_state, dem_location, max_dem-2)
+            self.only_interceptor(game_state, int_location, max_int)        
+        else:
+            self.only_interceptor(game_state, int_location, max_int)
+        return 
 
 
-    def bandit_attack():
-        # Sureprise attack from the woods
+    def only_demolisher(self, game_state, location, max_nos=9):
+        # Funtion to deploy only demolishers 
+        nos = min(max_nos,math.floor(game_state.get_resources(1))//(gamelib.GameUnit(DEMOLISHER, game_state.config).cost))
+        game_state.attempt_spawn(DEMOLISHER, location, nos)
+        return 
 
+    def only_interceptor(self, game_state, location, max_nos = 3):
+        # Fucntion to deploy interceptors
+        # By default interceptors are deployed at the bunker
+        # So that by the time enemy units reach the bunker, interceptors could counter the attack
+
+        nos = min(max_nos, math.floor(game_state.get_resources(1))//(gamelib.GameUnit(INTERCEPTOR, game_state.config).cost))
+        game_state.attempt_spawn(INTERCEPTOR, location, nos)
+        return 
+
+
+    def touch_it_scout(self, game_state, toLeft=0):
+        # Scout deployement strategy
+        # Use this only from vishalakshi
+        location = [[13, 0]]
+        if toLeft!=0:
+            location = [[14, 0]]
+        nos = math.floor(game_state.get_resources(1))
+        game_state.attempt_spawn(SCOUT, location,nos)
+        return
+
+
+
+    def demolisher_loc(self,game_state,size=0):
+        # Controls loc to facilitate demolishers attacking frontline defense
+        wl = [[x, 13] for x in range(5,10+3*size)]
+        game_state.attempt_spawn(WALL,wl)
+
+        # Making the recent wall temporary
+        game_state.attempt_remove(wl)
         return 
 
 
