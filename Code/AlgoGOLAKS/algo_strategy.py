@@ -2,6 +2,7 @@ from distutils.spawn import spawn
 from collections.abc import Iterable
 import queue
 from socket import getnameinfo
+from unittest import removeResult
 import gamelib
 import random
 import math
@@ -50,8 +51,19 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         # strategy flags
         self.structure_start = 5
+        self.replacement_flag = False 
+        self.save_sp = 6
 
+        # Strategy lists
+        self.replacement_walls = []
+        self.replacement_turrets = []
 
+        # Certain thresholds for the defense
+        self.bunker_turrets_th = 0.3
+        self.prime_walls_th  = 0.5
+        self.fox_tail_walls_th = 0.6
+        self.top_left_walls_th = 0.8
+        self.turrets_th = 0.15
 
 
 
@@ -126,6 +138,19 @@ class AlgoStrategy(gamelib.AlgoCore):
             return
 
         # Demolisher are 3+ supported
+
+        if(turn>=10):
+            # Remove the weak bunker, top left and fox tail units
+            # So that they become new in the next attempt
+            if(self.replacement_flag == True):
+                game_state.attempt_spawn(WALL, self.replacement_walls)
+                game_state.attempt_spawn(TURRET, self.replacement_turrets)
+
+                self.replacement_walls = []
+                self.replacement_turrets = []
+                self.replacement_flag = False
+
+
         if(turn <=25):
             # Bunker resistance = 7 Demolishers
             self.vajra_kawachadhara(game_state=game_state)
@@ -135,15 +160,29 @@ class AlgoStrategy(gamelib.AlgoCore):
         elif(turn<=45):
             # Implement heavy defense bunker
             # Bunker Resistance = 8 Demolishers
-            return
+            self.vajra_kawachadhara(game_state=game_state)
+            self.aayurvathi(game_state=game_state)
+            self.kala_bhairava(game_state=game_state)
+            self.aayurvathi_pro(game_state=game_state)
         elif(turn<60):
             # Implement imperial defense bunker
             # Bunker resistance = 10 Demolisers
-            return
+            self.vajra_kawachadhara(game_state=game_state)
+            self.aayurvathi(game_state=game_state)
+            self.kala_bhairava(game_state=game_state)
+            self.aayurvathi_pro(game_state=game_state)
         else:
             # Post Imperial defense bunker
             # Bunker resistance = 11-12 Demolisher
-            return
+            self.vajra_kawachadhara(game_state=game_state)
+            self.aayurvathi(game_state=game_state)
+            self.kala_bhairava(game_state=game_state)
+            self.aayurvathi_pro(game_state=game_state)
+
+        if(turn>=10):
+            # Defense replacement strategy initialization with the balance structure points
+            # increase the value of save_sp in times of hardship else normal
+            self.defense_replacement_strategy(game_state, self.save_sp)
         return 
         
     
@@ -225,8 +264,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.attempt_spawn(WALL, self.fox_tail_ext_walls)
         game_state.attempt_spawn(TURRET, self.fox_tail_turrets)
         return 
-        
-    
+         
     def kala_bhairava(self, game_state):
         # Defense upgrade controller
         game_state.attempt_upgrade(self.prime_walls)
@@ -268,14 +306,41 @@ class AlgoStrategy(gamelib.AlgoCore):
             game_state.attempt_spawn(INTERCEPTOR, spawn)
         return 
     
-    def antiFoxDefense(self, game_state):
-        # Defense strategy to contuor enemy's fox strategy
+    def defense_replacement_strategy(self, game_state, save_sp):
+        # Remove the weak bunker, top left and fox tail units
+        # So that they become new in the next attempt
 
+        fox_tail_wall_removal = self.wall_strength_report(game_state, self.fox_tail_ext_walls, self.fox_tail_walls_th)
+        prime_wall_removal = self.wall_strength_report(game_state, self.prime_walls, self.prime_walls_th)
+        top_left_wall_removal = self.wall_strength_report(game_state, self.top_left_walls, self.top_left_walls_th)
+
+        bunker_turret_removal = self.turret_strength_report(game_state, self.bunker_turrets, self.bunker_turrets_th)
+        
+        all_walls = fox_tail_wall_removal + prime_wall_removal + bunker_turret_removal
+
+        disp_sp = math.floor(game_state.get_resource(0) - save_sp)
+        final_walls = []
+        final_turrets = []
+        if(disp_sp>2):
+            final_walls = all_walls[0:disp_sp//2]
+            disp_sp-=2*(len(final_walls))
+        
+        if(disp_sp>6):
+            final_turrets = bunker_turret_removal[0:disp_sp//6]
+            disp_sp-=6*(len(final_turrets))
+
+
+        if(len(final_walls) > 0):
+            self.replacement_flag = True 
+            self.replacement_walls = final_walls
+            game_state.attempt_remove(final_walls)
+        
+        if(len(final_turrets) > 0):
+            self.replacement_flag = True 
+            self.replacement_turrets = final_turrets 
+            game_state.attempt_remove(final_turrets)
         return 
-
     
-   
-
     ### Attacking
 
     def dem_int_implementor(self, game_state, level = 6, attackToLeft=0,  demolisherAtTop=0, defenseToLeft=0,):
@@ -365,7 +430,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         return weakest_x 
 
         return 
-    
+    # Head of the defense strength and attack capacity report
+        # demolisher control score
     def path_danger_report(self, game_state):
         # Score the paths based on the predicted attack possible
         # scout score..
@@ -419,43 +485,52 @@ class AlgoStrategy(gamelib.AlgoCore):
             btw.append(location.append(self.wall_health(game_state, location)/wh))
         return (brw, bw, tlw, btw)
 
-    def dday_bunker_strength_report(self, game_state):
-        # Head of the defense strength and attack capacity report
-        # demolisher control score
 
-        # returns the state of bunker turrets and prime walls
-        th = gamelib.GameUnit(TURRET, game_state.config).max_health
-        wh = gamelib.GameUnit(WALL, game_state.config).max_health
-        bt = [self.turret_health(game_state, location)/th for location in self.bunker_turrets]
-        pw = [self.wall_health(game_state, location)/wh for location in self.prime_walls]
 
-        return (bt, pw)
+    # Given a list of turrets, return a sub set of turrets whose health is less than the given thresholds
+    # The return list maintains the order in which turrets are given
+    # All the turrets in the return list would be ordered to be removed if there are abundant structure points are availble for reconstruction
+    # Replacing walls is high priority than replacing turrets
+
+    # turret_health = gamelib.GameUnit(TURRET, game_state.config).max_health
+
+    def turret_strength_report(self, game_state, locations, threshold):
+        report = []
+
+        for location in locations:
+            item = game_state.contains_stationary_unit(location)
+            if(item == False or item.unit_type != TURRET):
+                continue
+            if(item.health/item.max_health < threshold):
+                report.append(location)
+        return report 
+
+    def wall_strength_report(self, game_state, locations, threshold):
+        report = []
+
+        for location in locations:
+            item = game_state.contains_stationary_unit(location)
+            if(item == False or item.unit_type != WALL):
+                continue
+            if(item.health/item.max_health < threshold):
+                report.append(location)
+        return report 
+
     
-    def isFoxAttack(self, game_state):
-        # After Strategy Control
-
-        return 
 
     ### Utility functions 
 
     def wall_health(self, game_state, location):
-        item = game_state.game_map.__getitem__(location)
-        if item[0].unit_type != game_state.config["unitInformation"][0]["shorthand"]:
+        item = game_state.contains_statioanry_unit(location)
+        if(item == False or item.unit_type != WALL):
             return 0
         return item.health
     
     def turret_health(self, game_state, location):
-        item = game_state.game_map.__getitem__(location)
-        if item[0].unit_type != game_state.config["unitInformation"][1]["shorthand"]:
+        item = game_state.contains_stationary_unit(location)
+        if(item == False or item.unit_type != TURRET):
             return 0
         return item.health
-    
-    def save_mobile(self, game_state, goal=0, spendAllowance=0, rounds=0):
-        # Use this function to save Mobile points for any future operations
-
-        return
-
-
 
 
     # Our strategy ends here
