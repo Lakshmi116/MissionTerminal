@@ -1,9 +1,9 @@
 from tracemalloc import start
 
 
-round = 8
+round = 5
 start = round 
-use = 2
+use = 0
 
 def mp(begin, use, round):
     if(use>=begin):
