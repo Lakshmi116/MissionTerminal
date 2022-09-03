@@ -30,29 +30,23 @@ class AlgoStrategy(gamelib.AlgoCore):
         random.seed(seed)
         gamelib.debug_write('Random seed: {}'.format(seed))
 
-        self.bunker_turrets = [[3, 12], [3, 11], [6, 9], [7, 8], [7, 9]]
-        self.heavy_bunker_turrets = [[4, 9], [9, 10]]
-        self.prime_support_locations =  [[1,12],[2,12]]
-        self.suppport_locations= [[2,11],[7,4]]
+        """"Upgrade the locations that are followed by double # comments!!"""
 
-        self.prime_walls = [[7, 10], [6, 10], [8, 9], [8, 10], [4, 13], [4, 12], [4, 11], [3, 13]]
+        self.bunker_turrets = [[3, 12], [3, 11], [6, 9], [7, 9]] ## Bunker turrets consists of primary defense 4 turrets
+        self.heavy_bunker_turrets = [[4, 9], [9, 10]] ## Heavy bunker turrets after ~20 rounds
+        self.prime_support_locations =  [[1,12],[2,12], [2,11]] ## Supports at the top for mobile units
+        self.suppport_locations= [[7,8]] ## secondary supports
+
+        self.fox_tail_turrets = [[24, 12]] ## Fox tail defending turret
+
+
+        self.prime_walls = [[7, 10], [6, 10], [8, 9], [8, 10], [4, 13], [4, 12], [4, 11], [3, 13]] ## bunker shield walls
         self.bottom_right_walls = [[x, x-14] for x in range(19,28)] # Bottom Right wall
         self.bottom_walls = [[x, 5] for x in range(11,19)]          # Bottom wall
-        self.bunker_tail = [[x, 16-x] for x in range(7,11)]         # Bunker Tail
-        self.top_left_walls = [[x,13] for x in range(0,3)]         # Top Left Corner
-
-        # Strategy Timers used to control the resources for the strategies
-        # These timers are used whenever waiting is required for the strategy
-        self.st_dem = 100
-        self.st_sudden_defense = 100
-        self.st_int_dem = 100
-        self.st_scout_bot = 100
-
-        # Strategy flags to represent that the online strategies
-        self.sf_dem = False
-        self.sf_sudden_defense = False
-        self.sf_int_dem = False
-        self.sf_scout_bot = False 
+        self.bunker_tail = [[x, 16-x] for x in range(8,11)]         # Bunker Tail
+        self.top_left_walls = [[x,13] for x in range(0,3)]          ## Top Left Corner
+        self.fox_tail_walls = [[x, x-14] for x in range(25,28)]     ## Fox tail part of the Bottom Right Walls
+        self.fox_tail_ext_walls = [[x, 13] for x in range(24, 28)]  ## Top Right walls to protect the fox tail part of the skeleton
 
         # strategy flags
         self.structure_start = 5
@@ -122,13 +116,36 @@ class AlgoStrategy(gamelib.AlgoCore):
     """
 
     def setDefenseControl(self, game_state):
-        # Defense checks and restoration
-        # Defense upgradation
-        # Go Hand in with attack module to know it's structure points requriements
-        if(game_state.turn_number>=5):
-            self.vajra_kawachadhara(game_state)
-            self.aayurvathi(game_state)
-        return
+        # Defense control builds and maintains the defense structure of the strategy
+        turn = game_state.turn_number
+
+        # Heavy defense must be implemented at round 25-29
+        # after round 30 each player could accumulate 21 points in every 3 rounds => heavy defense is required
+
+        if(turn <= 4):
+            return
+
+        # Demolisher are 3+ supported
+        if(turn <=25):
+            # Bunker resistance = 7 Demolishers
+            self.vajra_kawachadhara(game_state=game_state)
+            self.aayurvathi(game_state=game_state)
+            self.kala_bhairava(game_state=game_state)
+            self.aayurvathi_pro(game_state=game_state)
+        elif(turn<=45):
+            # Implement heavy defense bunker
+            # Bunker Resistance = 8 Demolishers
+            return
+        elif(turn<60):
+            # Implement imperial defense bunker
+            # Bunker resistance = 10 Demolisers
+            return
+        else:
+            # Post Imperial defense bunker
+            # Bunker resistance = 11-12 Demolisher
+            return
+        return 
+        
     
     def setAttackStrategy(self, game_state):
         # Deployement strategy using MP
@@ -142,9 +159,6 @@ class AlgoStrategy(gamelib.AlgoCore):
 
         # Path damage report
         base_locations = [[13, 0], [14, 0]]
-
-
-
         # Touch it Scout implementation
             # pathFree = 0
             # scoutToLeft = 0
@@ -198,36 +212,43 @@ class AlgoStrategy(gamelib.AlgoCore):
     
     def vajra_kawachadhara(self, game_state):
         # Basic defense build up
-        # Used in first 5 rounds. Opening move
-        # return 
-        self.build_defense(game_state)
+        
+        game_state.attempt_spawn(WALL, self.bottom_right_walls) # Crucial for diverting the enemy traffic
+        game_state.attempt_spawn(WALL, self.bottom_walls) # Crucial for diverting the enemy traffic
+        game_state.attempt_spawn(WALL, self.top_left_walls) # bunker starting
+        game_state.attempt_spawn(WALL, self.bunker_tail)
+        game_state.attempt_spawn(WALL, self.prime_walls)
 
-        game_state.attempt_spawn(SUPPORT,self.prime_support_locations)
-        game_state.attempt_spawn(SUPPORT,self.suppport_locations)
+        game_state.attempt_spawn(TURRET, self.bunker_turrets)
 
-
-        game_state.attempt_upgrade(self.prime_walls)
-        # game_state.attempt_upgrade(self.bottom_right_walls)
-        # game_state.attempt_upgrade(self.bottom_walls)
-        # game_state.attempt_upgrade(self.top_left_walls)
-        # game_state.attempt_upgrade(self.bunker_tail)
-        game_state.attempt_upgrade(self.prime_support_locations)
-        game_state.attempt_upgrade(self.suppport_locations)
+        # Initializing fox tail contruction
+        game_state.attempt_spawn(WALL, self.fox_tail_ext_walls)
+        game_state.attempt_spawn(TURRET, self.fox_tail_turrets)
+        return 
+        
     
     def kala_bhairava(self, game_state):
-        # Maintainance of defense
-        # Upgrades defense system in a timely fashion
+        # Defense upgrade controller
+        game_state.attempt_upgrade(self.prime_walls)
+        game_state.attempt_upgrade(self.bunker_turrets)
 
-        
+        # Fox tail upgrade
+        game_state.attempt_upgrade(self.fox_tail_ext_walls)
+        game_state.attempt_upgrade(self.fox_tail_turrets)
+        game_state.attempt_upgrade(self.fox_tail_walls)
         return 
 
     def aayurvathi(self, game_state):
         # Deploys support units in a timely fashion
-        if(game_state.turn_number==3):
-            game_state.attempt_spawn(SUPPORT,self.prime_support_locations)
-            game_state.attempt_spawn(SUPPORT,self.suppport_locations)
+        game_state.attempt_spawn(SUPPORT, self.prime_support_locations)
+        game_state.attempt_spawn(SUPPORT, self.suppport_locations)
         return 
-
+    
+    def aayurvathi_pro(self, game_state):
+        # Use this toattempt upgrade the supoport locations in priority order
+        game_state.attempt_upgrade(self.prime_support_locations)
+        game_state.attempt_upgrade(self.suppport_locations)
+        return 
 
 # Level 2 Utilities 
 
@@ -416,19 +437,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         return 
 
     ### Utility functions 
-    def  build_defense(self,game_state):
-        # wall skeleton
-        wl = self.prime_walls
-        wl += self.bottom_right_walls  # Bottom Right wall
-        wl += self.bottom_walls   # Bottom wall
-        wl += self.bunker_tail  # Bunker Tail
-        wl += self.top_left_walls  # Top Left Corner
-
-        # turret locations
-        tl = self.bunker_turrets
-        game_state.attempt_spawn(WALL,wl)
-        game_state.attempt_spawn(TURRET,tl)
-        return 
 
     def wall_health(self, game_state, location):
         item = game_state.game_map.__getitem__(location)
