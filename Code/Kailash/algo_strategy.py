@@ -26,7 +26,7 @@ Advanced strategy tips:
 
 class Bunker():
     def __init__(self):
-        self.bunker_turrets = [[3, 12], [3, 11], [6, 9], [7, 9]] ## Bunker turrets consists of primary defense 4 turrets
+        self.bunker_turrets = [[3, 12], [3, 13], [6, 9], [7, 9]] ## Bunker turrets consists of primary defense 4 turrets
         self.heavy_bunker_turrets = [[4, 9], [9, 10]] ## Heavy bunker turrets after ~20 rounds
         self.prime_support_locations =  [[1,12],[2,12], [2,11]] ## Supports at the top for mobile units
         self.suppport_locations= [[7,8]] ## secondary supports
@@ -38,7 +38,7 @@ class Bunker():
         self.bottom_right_walls = [[x, x-14] for x in range(19,28)] # Bottom Right wall
         self.bottom_walls = [[x, 5] for x in range(11,19)]          # Bottom wall
         self.bunker_tail = [[x, 16-x] for x in range(8,11)]         # Bunker Tail
-        self.top_left_walls = [[x,13] for x in range(0,3)]          ## Top Left Corner
+        self.top_left_walls = [[0,13],[1,13],[2,13],[4,13]]          ## Top Left Corner
         self.fox_tail_walls = [[x, x-14] for x in range(25,28)]     ## Fox tail part of the Bottom Right Walls
         self.fox_tail_ext_walls = [[x, 13] for x in range(24, 28)]  ## Top Right walls to protect the fox tail part of the skeleton
 
@@ -90,8 +90,7 @@ class Bunker():
         # Heavy defense must be implemented at round 25-29
         # after round 30 each player could accumulate 21 points in every 3 rounds => heavy defense is required
 
-        if(turn <= 4):
-            return
+        
 
         # Demolisher are 3+ supported
 
