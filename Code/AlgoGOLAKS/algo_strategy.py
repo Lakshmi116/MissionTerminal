@@ -24,15 +24,8 @@ Advanced strategy tips:
   the actual current map state.
 """
 
-class AlgoStrategy(gamelib.AlgoCore):
+class Bunker():
     def __init__(self):
-        super().__init__()
-        seed = random.randrange(maxsize)
-        random.seed(seed)
-        gamelib.debug_write('Random seed: {}'.format(seed))
-
-        """"Upgrade the locations that are followed by double # comments!!"""
-
         self.bunker_turrets = [[3, 12], [3, 11], [6, 9], [7, 9]] ## Bunker turrets consists of primary defense 4 turrets
         self.heavy_bunker_turrets = [[4, 9], [9, 10]] ## Heavy bunker turrets after ~20 rounds
         self.prime_support_locations =  [[1,12],[2,12], [2,11]] ## Supports at the top for mobile units
@@ -64,55 +57,16 @@ class AlgoStrategy(gamelib.AlgoCore):
         self.fox_tail_walls_th = 0.6
         self.top_left_walls_th = 0.8
         self.turrets_th = 0.15
-
-
-
-    def on_game_start(self, config):
-        """ 
-        Read in config and perform any initial setup here 
-        """
-        gamelib.debug_write('Configuring your custom algo strategy...')
-        self.config = config
-        global WALL, SUPPORT, TURRET, SCOUT, DEMOLISHER, INTERCEPTOR, MP, SP
-        WALL = config["unitInformation"][0]["shorthand"]
-        SUPPORT = config["unitInformation"][1]["shorthand"]
-        TURRET = config["unitInformation"][2]["shorthand"]
-        SCOUT = config["unitInformation"][3]["shorthand"]
-        DEMOLISHER = config["unitInformation"][4]["shorthand"]
-        INTERCEPTOR = config["unitInformation"][5]["shorthand"]
-        MP = 1
-        SP = 0
-        # This is a good place to do initial setup
-        self.scored_on_locations = []
-
-    def on_turn(self, turn_state):
-        """
-        This function is called every turn with the game state wrapper as
-        an argument. The wrapper stores the state of the arena and has methods
-        for querying its state, allocating your current resources as planned
-        unit deployments, and transmitting your intended deployments to the
-        game engine.
-        """
-        game_state = gamelib.GameState(self.config, turn_state)
-        gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
-        game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
-
-        self.GOLAKS(game_state)
-
-        game_state.submit_turn()
-
-
+    # Level 1 abstraction 
+    
     """Our Strategy.com"""
     
-    def GOLAKS(self, game_state):
-        self.setDefenseControl(game_state)
-        self.setAttackStrategy(game_state)
-        return 
+ 
         
-# Never self destruct
-# Consistency > Surprise Attack (not always)
+    # Never self destruct
+    # Consistency > Surprise Attack (not always)
 
-# Level 0 Abstraction
+    # Level 0 Abstraction
 
     """
     Deploying strategy
@@ -127,7 +81,9 @@ class AlgoStrategy(gamelib.AlgoCore):
     6. 60+ rounds: level 5 dem_int
     """
 
-    def setDefenseControl(self, game_state):
+
+
+    def setDefense(self, game_state):
         # Defense control builds and maintains the defense structure of the strategy
         turn = game_state.turn_number
 
@@ -183,10 +139,9 @@ class AlgoStrategy(gamelib.AlgoCore):
             # Defense replacement strategy initialization with the balance structure points
             # increase the value of save_sp in times of hardship else normal
             self.defense_replacement_strategy(game_state, self.save_sp)
-        return 
-        
+        return
     
-    def setAttackStrategy(self, game_state):
+    def setAttack(self, game_state):
         # Deployement strategy using MP
         # Structure points required only for loc (sp:[6, 9])
         turn = game_state.turn_number
@@ -225,9 +180,6 @@ class AlgoStrategy(gamelib.AlgoCore):
         else:
             self.dem_int_implementor(game_state, level=5, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
         return 
-   
-
-# Level 1 abstraction 
 
     def vishalakshi(self, game_state, max_scout=15):
         # Fetches points - Fast moving healthy units
@@ -288,6 +240,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.attempt_upgrade(self.suppport_locations)
         return 
 
+    
 # Level 2 Utilities 
 
     ### Defense
@@ -531,6 +484,61 @@ class AlgoStrategy(gamelib.AlgoCore):
         if(item == False or item.unit_type != TURRET):
             return 0
         return item.health
+class Maze():
+    def __init__(self):
+        pass 
+
+    def setDefense(self, gamae_state):
+        pass 
+    def setAttack(self, game_state):
+        pass 
+
+class AlgoStrategy(gamelib.AlgoCore):
+    def __init__(self):
+        super().__init__()
+        seed = random.randrange(maxsize)
+        random.seed(seed)
+        gamelib.debug_write('Random seed: {}'.format(seed))
+
+        """"Upgrade the locations that are followed by double # comments!!"""
+
+
+
+    def on_game_start(self, config):
+        """ 
+        Read in config and perform any initial setup here 
+        """
+        gamelib.debug_write('Configuring your custom algo strategy...')
+        self.config = config
+        global WALL, SUPPORT, TURRET, SCOUT, DEMOLISHER, INTERCEPTOR, MP, SP
+        WALL = config["unitInformation"][0]["shorthand"]
+        SUPPORT = config["unitInformation"][1]["shorthand"]
+        TURRET = config["unitInformation"][2]["shorthand"]
+        SCOUT = config["unitInformation"][3]["shorthand"]
+        DEMOLISHER = config["unitInformation"][4]["shorthand"]
+        INTERCEPTOR = config["unitInformation"][5]["shorthand"]
+        MP = 1
+        SP = 0
+        # This is a good place to do initial setup
+        self.scored_on_locations = []
+        self.bunker_inst = Bunker()
+
+    def on_turn(self, turn_state):
+        """
+        This function is called every turn with the game state wrapper as
+        an argument. The wrapper stores the state of the arena and has methods
+        for querying its state, allocating your current resources as planned
+        unit deployments, and transmitting your intended deployments to the
+        game engine.
+        """
+        game_state = gamelib.GameState(self.config, turn_state)
+        gamelib.debug_write('Performing turn {} of your custom algo strategy'.format(game_state.turn_number))
+        game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
+
+        self.bunker_inst.setDefense(game_state)
+        self.bunker_inst.setAttack(game_state)
+
+        game_state.submit_turn()
 
 
     # Our strategy ends here
