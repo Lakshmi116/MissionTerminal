@@ -1,0 +1,5 @@
+README.md
+*.ps1
+*/documentation/*
+*/.git/*
+/gamelib/__pycache__/
