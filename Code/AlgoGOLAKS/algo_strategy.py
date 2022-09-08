@@ -90,7 +90,7 @@ class Bunker():
         # Check Scout attack possibility
 
         structureWeakFlag = True
-        if(game_state.get_resource(1)[0] >= 8):
+        if(game_state.get_resource(1,1) >= 6):
             structureWeakFlag = False
         scoutToLeft = self.vishalakshi(game_state)        
 
@@ -126,12 +126,12 @@ class Bunker():
         right = -1 
         isLeft = 0
         damage_mn = 99999999
-        for damage in attack_report:
+        for i in range(1,-1,-1):
             right+=1
-            if(damage_mn > damage):
-                damage_mn = damage
+            if(damage_mn > attack_report[i]):
+                damage_mn = attack_report[i]
                 isLeft = right
-            if damage <5:
+            if damage_mn <5:
                 # self.touch_it_scout(game_state,toLeft=right, max_nos=max_scout)
                 return right
         return -1
@@ -164,7 +164,8 @@ class Bunker():
         disp_mp = cur_mp + (8/9)*(3-t) 
         if(disp_mp >= 1):
             return math.floor(disp_mp)
-        disp_mp = 16*(4*(t/3) + 9*cur_mp/16+12.5)/9
+        r= 2+t/3
+        disp_mp = 16*(7*r/4+9*cur_mp/16-t-1.5)/9
         if(disp_mp>=1):
             return math.floor(disp_mp)
         return min(math.ceil(t/6), 3)
