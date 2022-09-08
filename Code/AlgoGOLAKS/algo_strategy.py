@@ -63,7 +63,7 @@ class Bunker():
         self.tail_turrets_bq = [[[25,12], TURRET],[[25,13], WALL],\
                                 [[24,12],TURRET], [[24,13],WALL],[[23,12],WALL], [[23,13],WALL],\
                                 [[24,11],TURRET],\
-                                [[23,11], TURRET],[[22,11], WALL]\
+                                [[23,11], TURRET],[[22,11], WALL],\
                                 [[23,10], TURRET], [[22,10],WALL],\
                                 ]
         self.bottom_turrets_bq = [[[10,6],TURRET], [[16,5], TURRET], [[13,5],TURRET]]
@@ -81,6 +81,7 @@ class Bunker():
 
         # Strategy flags
         self.save_sp = 0
+        self.epsilon_cut = 0.75
     
     """
     TODO
@@ -97,71 +98,52 @@ class Bunker():
         # comparing with current base
         base_units = self.turret_base + self.wall_base
         com = [0,0]
+        tot_damage = 0
         for loc in base_units:
             unit = game_state.contains_stationary_unit(loc)
             if unit==False:
                 com[0] += loc[0]
                 com[1] += loc[1]
+                tot_damage+=1
             else:
                 damage = (unit.max_health-unit.health)/unit.max_health
                 com[0] += loc[0]*damage
                 com[1] += loc[1]*damage
-        com[0]/=len(base_units)
-        com[1]/=len(base_units)
+                tot_damage+=damage
+        if(tot_damage<1):
+            return 0
+        com[0]/=tot_damage
+        com[1]/=tot_damage
 
-        focus_side = self.closePoint(com)
-        # focus_side : {(left, 0), (right, 1), (bottom, 2)}
-
-        return focus_side
-        
+        # focus_side = self.closePoint(com)
+        if(com[0]<=13):
+            return 0
+        else:
+            return 1
+ 
 
     def setDefense(self, game_state):
         # Check for the health of the crucial pieces and plan for rearranngement
         #  self.previous_round_build_order 
         fs = self.analyzeSelf(game_state)
         # Ensure the base defense is present
-        self.buildBaseDefense(game_state)
+        self.buildBase(game_state)
         # Focus on the focus_side
         disp_sp = game_state.get_resource(0)-self.save_sp
-        if(fs==0):
-            while(disp_sp>0 and len(self.prime_turret_bq)>0):
-                loc, unit = self.prime_turret_bq[0]
-                if(game_state.can_spawn(unit, loc)):
-                    game_state.attempt_spawn(unit, loc)
-                    disp_sp-=game_state.type_cost(unit)
-                    self.prime_turret_bq.pop()
-                    self.turret_uq.append([loc, unit])
-                    if(unit==TURRET):
-                        self.turret_base.append(loc)
-                    elif(unit==WALL):
-                        self.wall_base.append(loc)
-        elif(fs==1):
-            while(disp_sp>0 and len(self.tail_turrets_bq)>0):
-                loc, unit = self.tail_turrets_bq[0]
-
-                if(game_state.can_spawn(unit, loc)):
-                    game_state.attempt_spawn(unit, loc)
-                    disp_sp-=game_state.type_cost(unit)
-                    self.tail_turrets_bq.pop()
-                    self.turret_uq.append([loc, unit])
-                    if(unit==TURRET):
-                        self.turret_base.append(loc)
-                    elif(unit==WALL):
-                        self.wall_base.append(loc)
+        epsilon = random.random()
+        gamelib.debug_write("fs:",fs, "round: ", game_state.turn_number)
+        if(epsilon<self.epsilon_cut):
+            self.turret_uq = self.buildExploit(game_state, self.turret_uq)
         else:
-            while(disp_sp>0 and len(self.bottom_turrets_bq)>0):
-                loc, unit = self.bottom_turrets_bq[0]
-                if(game_state.can_spawn(unit, loc)):
-                    game_state.attempt_spawn(unit, loc)
-                    disp_sp-=game_state.type_cost(unit)
-                    self.bottom_turrets_bq.pop()
-                    self.turret_uq.append([loc, unit])
-                    if(unit==TURRET):
-                        self.turret_base.append(loc)
-                    elif(unit==WALL):
-                        self.wall_base.append(loc)
-
-       
+            if(fs==2):
+                self.bottom_turrets_bq = self.buildExplore(game_state, self.bottom_turrets_bq)
+            elif(fs==1):
+                self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
+            else:
+                self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
+        
+        gamelib.debug_write(disp_sp)
+        return 
         
         # base locations contain the expected progress so far
         # set difference would give the backlog/ damaged area
@@ -176,27 +158,75 @@ class Bunker():
 
 
     def setAttack(self, game_state):
-        pass
+        return 
 
     def buildBase(self, game_state):
         
         game_state.attempt_spawn(WALL,self.wall_base)
         game_state.attempt_spawn(TURRET, self.turret_base)
 
-        game_state.attempt_upgrade(WALL, self.wall_up_base)
-        game_state.attempt_upgrade(TURRET, self.turret_up_base)
+        game_state.attempt_upgrade(self.wall_up_base)
+        game_state.attempt_upgrade(self.turret_up_base)
 
         if(len(self.support_base)>0):
             game_state.attempt_spawn(SUPPORT, self.support_base)
         if(len(self.support_up_base)):
-            game_state.attempt_upgrade(SUPPORT, self.support_up_base)
+            game_state.attempt_upgrade(self.support_up_base)
         # It has made sure to build or upgrade the base promised structure of that time
         return
     
     # utility functions
-    def dist(loc1, loc2):
+    def dist(self, loc1, loc2):
         # using manhattan distance for the distance
         return abs(loc1[0]-loc2[0]) + abs(loc1[1]-loc2[1])
+
+    def buildExplore(self, game_state, unit_list):
+        disp_sp = game_state.get_resource(0)-self.save_sp 
+        
+        while(disp_sp>0 and len(unit_list)>0):
+                loc, unit = unit_list[0]
+                if(game_state.can_spawn(unit, loc)):
+                    game_state.attempt_spawn(unit, loc)
+                    disp_sp= disp_sp - game_state.type_cost(unit)[0]
+                    unit_list.pop(0)
+                    self.turret_uq.append([loc, unit])
+                    if(unit==TURRET):
+                        self.turret_base.append(loc)
+                    elif(unit==WALL):
+                        self.wall_base.append(loc)
+                else:
+                    break
+        return unit_list
+    
+    def buildExploit(self, game_state, unit_list):
+        gamelib.debug_write("exploit", unit_list)
+        disp_sp = game_state.get_resource(0)-self.save_sp
+
+        wall_cost = game_state.type_cost(WALL)[0]
+        turret_cost = game_state.type_cost(TURRET)[0]
+
+        while(disp_sp>=wall_cost and len(unit_list)>0):
+            loc, unit = unit_list[0]
+            cur_unit = game_state.contains_stationary_unit(loc)
+            if(cur_unit==False):
+                unit_list.pop(0)
+                continue
+            if(unit==TURRET and disp_sp>=turret_cost):
+                game_state.attempt_upgrade(loc)
+                disp_sp-=turret_cost
+                self.turret_up_base.append(loc)
+                unit_list.pop(0)
+            elif(unit==WALL and disp_sp>=wall_cost):
+                game_state.attempt_upgrade(loc)
+                disp_sp-=wall_cost 
+                self.wall_up_base.append(loc)
+                unit_list.pop(0)
+            elif(disp_sp<wall_cost):
+                break
+        return unit_list
+            
+
+            
 
     def closePoint(self, location):
         left_loc = [0,13]
@@ -208,17 +238,23 @@ class Bunker():
         # bottom = 2
 
         distances = [self.dist(left_loc, location),self.dist(right_loc, location),self.dist(bottom_loc, location)]
-        sum = 0
-        prev = 0
-        for i in distances:
-            sum+=i
-        rnd_i = random.random()
+        # sum = 0
+        # prev = 0
+        # for i in distances:
+        #     sum+=i
+        # rnd_i = random.random()
+        # for i in range(3):
+        #     distances[i] = prev + distances[i]/sum
+        #     prev = distances[i]
+        #     if(distances[i]>=rnd_i):
+        #         return i
+        ind = 0
+        mx = 100000
         for i in range(3):
-            distances[i] = prev + distances[i]/sum
-            prev = distances[i]
-            if(distances[i]>=rnd_i):
-                return i
-        return 0
+            if(distances[i]<mx):
+                mx = distances[i]
+                ind = i
+        return ind
 
 """"----------------------------------------------------------------------"""
 class Maze():
