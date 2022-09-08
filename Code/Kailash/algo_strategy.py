@@ -28,20 +28,20 @@ class Bunker():
     def __init__(self):
         self.bunker_turrets = [[3, 13], [3, 12], [6, 10], [7, 9],[2,12]] ## Bunker turrets consists of primary defense 4 turrets
         self.prime_bunker_turrets = [[26, 12],[3, 13]]
-        self.heavy_bunker_turrets = [[1,12],[2, 11], [4, 9], [5, 8], [1, 12],[7, 6], [8, 5]] ## Heavy bunker turrets after ~20 rounds
-        self.prime_support_locations =  [[2,12],[8, 8], [9, 7], [10, 6], [11, 5]] ## Supports at the top for mobile units
+        self.heavy_bunker_turrets = [[1,12],[2, 11], [4, 9], [6, 7], [1, 12],[7, 6], [8, 5]] ## Heavy bunker turrets after ~20 rounds
+        self.prime_support_locations =  [[1,12],[8, 8], [9, 7], [10, 6], [11, 5]] ## Supports at the top for mobile units
         self.suppport_locations= [] ## secondary supports
 
         self.fox_tail_turrets = [[26, 12]] ## Fox tail defending turret
 
         self.super_prime_walls = [[27, 13],[0, 13],[4, 12],[7, 10]]
-        self.prime_walls = [[26,13],[2,13],[26,13],[1,13],[8, 9], [4, 13] ] ## bunker shield walls
+        self.prime_walls = [[2,13],[1,13],[8, 9], [4, 13] ] ## bunker shield walls
         self.bottom_right_walls = [ [25, 11],  [24, 10], [23, 9],  [22, 8],  [21, 7], [20, 6]] # Bottom Right wall
         self.bottom_walls = [[12, 5], [13, 5], [14, 5], [15, 5], [17, 5], [18, 5], [19, 5], [16, 4]]          # Bottom wall
         self.bunker_tail = [[7, 10], [8, 9],[9, 8],[10, 7],[11, 6]]         # Bunker Tail
         self.top_left_walls = [[0, 13], [1, 13], [2, 13], [4, 13], [4, 12]]          ## Top Left Corner
-        self.fox_tail_walls = [[27, 13],[26,13]] 
-        self.fox_tail_extra_turrets = [[25,13],[25,12],[24,13],[24,12],[24,11]]
+        self.fox_tail_walls = [[27, 13]] 
+        self.fox_tail_extra_turrets = [[26,13],[25,13],[25,12],[24,13],[24,12],[24,11]]
 
     
 
@@ -166,8 +166,9 @@ class Bunker():
         # Touch it Scout implementation
             # pathFree = 0
             # scoutToLeft = 0
-        if(turn>=5) :
+        if(turn>=5 and game_state.get_resources(1,MP)>=12) :
             self.only_interceptor(game_state, [[5,8]], 2)
+            
         if(turn>=3):
             scout_nos = ((turn//10)+1)*10
             # scout_nos -= random.randint(0,scout_nos//2)
@@ -191,6 +192,9 @@ class Bunker():
             self.dem_int_implementor(game_state, level=4, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
         else:
             self.dem_int_implementor(game_state, level=5, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
+        
+        game_state.attempt_spawn(TURRET,self.heavy_bunker_turrets)
+        game_state.attempt_upgrade(self.heavy_bunker_turrets)
         return 
 
     def vishalakshi(self, game_state, max_scout=15):
