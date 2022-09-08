@@ -1,3 +1,4 @@
+from dis import dis
 from distutils.spawn import spawn
 from collections.abc import Iterable
 import queue
@@ -26,464 +27,200 @@ Advanced strategy tips:
 
 class Bunker():
     def __init__(self):
-        self.bunker_turrets = [[3, 12], [3, 11], [6, 9], [7, 9]] ## Bunker turrets consists of primary defense 4 turrets
-        self.heavy_bunker_turrets = [[4, 9], [9, 10]] ## Heavy bunker turrets after ~20 rounds
-        self.prime_support_locations =  [[1,12],[2,12], [2,11]] ## Supports at the top for mobile units
-        self.suppport_locations= [[7,8]] ## secondary supports
+        # seed = random.randrange(maxsize)
+        # random.seed(seed)
+        # Current wall locations
+        self.bandit_walls = [[0, 13], [1, 13], [3, 13]]
+        self.top_right_walls = [[26, 13], [27, 13]]
+        self.right_walls = [[25, 11], [24, 10], [23, 9], [22, 8], [21, 7], [20, 6]]
+        self.bottom_walls = [[12, 6], [13, 6], [14, 6], [15, 6], [16, 6], [17, 5], [18, 6], [19, 6]]
+        self.left_walls = [[6, 11], [7, 10], [8, 9], [9, 8], [10, 7], [11, 6]]
 
-        self.fox_tail_turrets = [[24, 12]] ## Fox tail defending turret
+        # Current Turret Locations
+        self.prime_turrets = [[2, 13], [3, 12], [5, 11], [6, 10]]
+        self.tail_turrets = [[26, 12]]
+        self.bottom_turrets = []
+
+        # Current Support Locations
+        self.prime_supports = []
+        self.other_supports = []
+
+        # base, up_base represent the current state of the structures
+        self.turret_base = self.prime_turrets + self.tail_turrets + self.bottom_turrets
+        self.wall_base = self.bandit_walls + self.top_right_walls + self.right_walls + self.bottom_walls + self.left_walls
+        self.support_base = self.prime_supports + self.other_supports
+
+        self.turret_up_base = [[3,12]]
+        self.support_up_base = []
+        self.wall_up_base = [[3,13]]
 
 
-        self.prime_walls = [[7, 10], [6, 10], [8, 9], [8, 10], [4, 13], [4, 12], [4, 11], [3, 13]] ## bunker shield walls
-        self.bottom_right_walls = [[x, x-14] for x in range(19,28)] # Bottom Right wall
-        self.bottom_walls = [[x, 5] for x in range(11,19)]          # Bottom wall
-        self.bunker_tail = [[x, 16-x] for x in range(8,11)]         # Bunker Tail
-        self.top_left_walls = [[x,13] for x in range(0,3)]          ## Top Left Corner
-        self.fox_tail_walls = [[x, x-14] for x in range(25,28)]     ## Fox tail part of the Bottom Right Walls
-        self.fox_tail_ext_walls = [[x, 13] for x in range(24, 28)]  ## Top Right walls to protect the fox tail part of the skeleton
+        # Lists (turrets and supports at calculated locations)
+        # turrets and walls both are at turret_bq queue
+        self.prime_turret_bq = [[[3,10],TURRET],\
+                                [[4,9],TURRET], [[7,9],TURRET],\
+                                [[5,8], TURRET]]
+        self.tail_turrets_bq = [[[25,12], TURRET],[[25,13], WALL],\
+                                [[24,12],TURRET], [[24,13],WALL],[[23,12],WALL], [[23,13],WALL],\
+                                [[24,11],TURRET],\
+                                [[23,11], TURRET],[[22,11], WALL]\
+                                [[23,10], TURRET], [[22,10],WALL],\
+                                ]
+        self.bottom_turrets_bq = [[[10,6],TURRET], [[16,5], TURRET], [[13,5],TURRET]]
 
-        # strategy flags
-        self.structure_start = 5
-        self.replacement_flag = False 
-        self.save_sp = 6
+        self.support_bq = [[4, 9], [5, 8], [8, 8], [9, 7], [7, 6], [8, 5], [9, 4]]
 
-        # Strategy lists
-        self.replacement_walls = []
-        self.replacement_turrets = []
 
-        # Certain thresholds for the defense
-        self.bunker_turrets_th = 0.3
-        self.prime_walls_th  = 0.5
-        self.fox_tail_walls_th = 0.6
-        self.top_left_walls_th = 0.8
-        self.turrets_th = 0.15
-    # Level 1 abstraction 
+
+        self.turret_uq = [[[26, 13],WALL], [[26, 12], TURRET],\
+                          [[2, 13], TURRET], [[6,11],WALL] , [[5, 11], TURRET],\
+                          [[27,13], WALL], [[25,11], WALL],\
+                          [[7,12], WALL], [[6,12], TURRET],\
+                        ]
+        self.support_uq = []
+
+        # Strategy flags
+        self.save_sp = 0
     
-    """Our Strategy.com"""
-    
- 
+    """
+    TODO
+    ----
+    1. Incrementally add turrets, supports and upgrades
+    2. Attack strategty based on minimal waste and timely heavy damage
+    3. Attack on the weak side
+    4. Heavy attack at border strategy.....!!
+
+    """
+    def analyzeSelf(self, game_state):
+        # SCANNIG SELF AREA FOR DEFENSE
+        # SCAN ENEMY AREA FOR ATTACK
+        # comparing with current base
+        base_units = self.turret_base + self.wall_base
+        com = [0,0]
+        for loc in base_units:
+            unit = game_state.contains_stationary_unit(loc)
+            if unit==False:
+                com[0] += loc[0]
+                com[1] += loc[1]
+            else:
+                damage = (unit.max_health-unit.health)/unit.max_health
+                com[0] += loc[0]*damage
+                com[1] += loc[1]*damage
+        com[0]/=len(base_units)
+        com[1]/=len(base_units)
+
+        focus_side = self.closePoint(com)
+        # focus_side : {(left, 0), (right, 1), (bottom, 2)}
+
+        return focus_side
         
-    # Never self destruct
-    # Consistency > Surprise Attack (not always)
-
-    # Level 0 Abstraction
-
-    """
-    Deploying strategy
-    ----------------------------
-    clean path => touch_it_scout (from turn_number>=4 always)
-    ----------------------------
-    1. 0-5 rounds: Interceptors defend the arena
-    2. 5-10 rounds: level 1 dem_int
-    3. 10-30 rounds: level 2 dem_int
-    4. 30-40 rounds: level 3 dem_int
-    5. 40-60 rounds: level 4 dem_int
-    6. 60+ rounds: level 5 dem_int
-    """
-
-
 
     def setDefense(self, game_state):
-        # Defense control builds and maintains the defense structure of the strategy
-        turn = game_state.turn_number
+        # Check for the health of the crucial pieces and plan for rearranngement
+        #  self.previous_round_build_order 
+        fs = self.analyzeSelf(game_state)
+        # Ensure the base defense is present
+        self.buildBaseDefense(game_state)
+        # Focus on the focus_side
+        disp_sp = game_state.get_resource(0)-self.save_sp
+        if(fs==0):
+            while(disp_sp>0 and len(self.prime_turret_bq)>0):
+                loc, unit = self.prime_turret_bq[0]
+                if(game_state.can_spawn(unit, loc)):
+                    game_state.attempt_spawn(unit, loc)
+                    disp_sp-=game_state.type_cost(unit)
+                    self.prime_turret_bq.pop()
+                    self.turret_uq.append([loc, unit])
+                    if(unit==TURRET):
+                        self.turret_base.append(loc)
+                    elif(unit==WALL):
+                        self.wall_base.append(loc)
+        elif(fs==1):
+            while(disp_sp>0 and len(self.tail_turrets_bq)>0):
+                loc, unit = self.tail_turrets_bq[0]
 
-        # Heavy defense must be implemented at round 25-29
-        # after round 30 each player could accumulate 21 points in every 3 rounds => heavy defense is required
-
-        if(turn <= 4):
-            return
-
-        # Demolisher are 3+ supported
-
-        if(turn>=10):
-            # Remove the weak bunker, top left and fox tail units
-            # So that they become new in the next attempt
-            if(self.replacement_flag == True):
-                game_state.attempt_spawn(WALL, self.replacement_walls)
-                game_state.attempt_spawn(TURRET, self.replacement_turrets)
-
-                self.replacement_walls = []
-                self.replacement_turrets = []
-                self.replacement_flag = False
-
-
-        if(turn <=25):
-            # Bunker resistance = 7 Demolishers
-            self.vajra_kawachadhara(game_state=game_state)
-            self.aayurvathi(game_state=game_state)
-            self.kala_bhairava(game_state=game_state)
-            self.aayurvathi_pro(game_state=game_state)
-        elif(turn<=45):
-            # Implement heavy defense bunker
-            # Bunker Resistance = 8 Demolishers
-            self.vajra_kawachadhara(game_state=game_state)
-            self.aayurvathi(game_state=game_state)
-            self.kala_bhairava(game_state=game_state)
-            self.aayurvathi_pro(game_state=game_state)
-        elif(turn<60):
-            # Implement imperial defense bunker
-            # Bunker resistance = 10 Demolisers
-            self.vajra_kawachadhara(game_state=game_state)
-            self.aayurvathi(game_state=game_state)
-            self.kala_bhairava(game_state=game_state)
-            self.aayurvathi_pro(game_state=game_state)
+                if(game_state.can_spawn(unit, loc)):
+                    game_state.attempt_spawn(unit, loc)
+                    disp_sp-=game_state.type_cost(unit)
+                    self.tail_turrets_bq.pop()
+                    self.turret_uq.append([loc, unit])
+                    if(unit==TURRET):
+                        self.turret_base.append(loc)
+                    elif(unit==WALL):
+                        self.wall_base.append(loc)
         else:
-            # Post Imperial defense bunker
-            # Bunker resistance = 11-12 Demolisher
-            self.vajra_kawachadhara(game_state=game_state)
-            self.aayurvathi(game_state=game_state)
-            self.kala_bhairava(game_state=game_state)
-            self.aayurvathi_pro(game_state=game_state)
+            while(disp_sp>0 and len(self.bottom_turrets_bq)>0):
+                loc, unit = self.bottom_turrets_bq[0]
+                if(game_state.can_spawn(unit, loc)):
+                    game_state.attempt_spawn(unit, loc)
+                    disp_sp-=game_state.type_cost(unit)
+                    self.bottom_turrets_bq.pop()
+                    self.turret_uq.append([loc, unit])
+                    if(unit==TURRET):
+                        self.turret_base.append(loc)
+                    elif(unit==WALL):
+                        self.wall_base.append(loc)
 
-        if(turn>=10):
-            # Defense replacement strategy initialization with the balance structure points
-            # increase the value of save_sp in times of hardship else normal
-            self.defense_replacement_strategy(game_state, self.save_sp)
-        return
-    
+       
+        
+        # base locations contain the expected progress so far
+        # set difference would give the backlog/ damaged area
+
+
+        # Base defense is build enough so change the current structure for the strategy
+        # Defense implementation
+
+        # After doing every thing check if something's needed to be replaced
+        # self.check_weak_buildings at the borders
+
+
+
     def setAttack(self, game_state):
-        # Deployement strategy using MP
-        # Structure points required only for loc (sp:[6, 9])
-        turn = game_state.turn_number
+        pass
 
-
-        attackToLeft = 0
-        defenseToLeft = 0
-        demolisherAtTop = 0
-
-        # Path damage report
-        base_locations = [[13, 0], [14, 0]]
-        # Touch it Scout implementation
-            # pathFree = 0
-            # scoutToLeft = 0
-        if(turn>=3):
-            scout_nos = ((turn//10)+1)*10
-            # scout_nos -= random.randint(0,scout_nos//2)
-
-            isScout = self.vishalakshi(game_state=game_state, max_scout=scout_nos)
-
-            attackToLeft = isScout-1
-
-        if(turn<5):
-            # interceptors
-            int_location = [[5,8]]
-            self.only_interceptor(game_state,location=int_location, max_nos = 5)
-        elif(turn<10):
-            # level 1 dem_int
-            self.dem_int_implementor(game_state,level=1,attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop,defenseToLeft=defenseToLeft)
-        elif(turn<30):
-            self.dem_int_implementor(game_state, level=2, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
-        elif(turn<40):
-            self.dem_int_implementor(game_state, level=3, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
-        elif(turn<60):
-            self.dem_int_implementor(game_state, level=4, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
-        else:
-            self.dem_int_implementor(game_state, level=5, attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop, defenseToLeft=defenseToLeft)
-        return 
-
-    def vishalakshi(self, game_state, max_scout=15):
-        # Fetches points - Fast moving healthy units
-        attack_report = self.path_danger_report(game_state)
-
-        # locations = [[13,0], [14, 0]]
-        # return 1 if right is better than left
-        # return 2 if left is better than right
-
-        right = -1 
-        isLeft = 0
-        damage_mn = 99999999
-        for damage in attack_report:
-            right+=1
-            if(damage_mn > damage):
-                damage_mn = damage
-                isLeft = right
-            if damage <2:
-                self.touch_it_scout(game_state,toLeft=right, max_nos=max_scout)
-        return isLeft+1
-    
-    def vajra_kawachadhara(self, game_state):
-        # Basic defense build up
+    def buildBase(self, game_state):
         
-        game_state.attempt_spawn(WALL, self.bottom_right_walls) # Crucial for diverting the enemy traffic
-        game_state.attempt_spawn(WALL, self.bottom_walls) # Crucial for diverting the enemy traffic
-        game_state.attempt_spawn(WALL, self.top_left_walls) # bunker starting
-        game_state.attempt_spawn(WALL, self.bunker_tail)
-        game_state.attempt_spawn(WALL, self.prime_walls)
+        game_state.attempt_spawn(WALL,self.wall_base)
+        game_state.attempt_spawn(TURRET, self.turret_base)
 
-        game_state.attempt_spawn(TURRET, self.bunker_turrets)
+        game_state.attempt_upgrade(WALL, self.wall_up_base)
+        game_state.attempt_upgrade(TURRET, self.turret_up_base)
 
-        # Initializing fox tail contruction
-        game_state.attempt_spawn(WALL, self.fox_tail_ext_walls)
-        game_state.attempt_spawn(TURRET, self.fox_tail_turrets)
-        return 
-         
-    def kala_bhairava(self, game_state):
-        # Defense upgrade controller
-        game_state.attempt_upgrade(self.prime_walls)
-        game_state.attempt_upgrade(self.bunker_turrets)
-
-        # Fox tail upgrade
-        game_state.attempt_upgrade(self.fox_tail_ext_walls)
-        game_state.attempt_upgrade(self.fox_tail_turrets)
-        game_state.attempt_upgrade(self.fox_tail_walls)
-        return 
-
-    def aayurvathi(self, game_state):
-        # Deploys support units in a timely fashion
-        game_state.attempt_spawn(SUPPORT, self.prime_support_locations)
-        game_state.attempt_spawn(SUPPORT, self.suppport_locations)
-        return 
-    
-    def aayurvathi_pro(self, game_state):
-        # Use this toattempt upgrade the supoport locations in priority order
-        game_state.attempt_upgrade(self.prime_support_locations)
-        game_state.attempt_upgrade(self.suppport_locations)
-        return 
-
-    
-# Level 2 Utilities 
-
-    ### Defense
-    def interceptor_attack(self, game_state, random_state=0, nos=3):
-        # Interceptor deployement strategy
-
-        if(random_state==0):
-            locations = [[9,4], [14, 0], [10,3], [14, 0], [10,3]]
-            game_state.attempt_spawn(INTERCEPTOR, locations)
-        else:
-            locations = [[9,4], [6, 7], [14, 0], [13, 0]]
-            spawn = []
-            for i in range(nos):
-                ri = random.randint(0,len(locations)-1)
-                spawn.append(locations[ri])
-            game_state.attempt_spawn(INTERCEPTOR, spawn)
-        return 
-    
-    def defense_replacement_strategy(self, game_state, save_sp):
-        # Remove the weak bunker, top left and fox tail units
-        # So that they become new in the next attempt
-
-        fox_tail_wall_removal = self.wall_strength_report(game_state, self.fox_tail_ext_walls, self.fox_tail_walls_th)
-        prime_wall_removal = self.wall_strength_report(game_state, self.prime_walls, self.prime_walls_th)
-        top_left_wall_removal = self.wall_strength_report(game_state, self.top_left_walls, self.top_left_walls_th)
-
-        bunker_turret_removal = self.turret_strength_report(game_state, self.bunker_turrets, self.bunker_turrets_th)
-        
-        all_walls = fox_tail_wall_removal + prime_wall_removal + bunker_turret_removal
-
-        disp_sp = math.floor(game_state.get_resource(0) - save_sp)
-        final_walls = []
-        final_turrets = []
-        if(disp_sp>2):
-            final_walls = all_walls[0:disp_sp//2]
-            disp_sp-=2*(len(final_walls))
-        
-        if(disp_sp>6):
-            final_turrets = bunker_turret_removal[0:disp_sp//6]
-            disp_sp-=6*(len(final_turrets))
-
-
-        if(len(final_walls) > 0):
-            self.replacement_flag = True 
-            self.replacement_walls = final_walls
-            game_state.attempt_remove(final_walls)
-        
-        if(len(final_turrets) > 0):
-            self.replacement_flag = True 
-            self.replacement_turrets = final_turrets 
-            game_state.attempt_remove(final_turrets)
-        return 
-    
-    ### Attacking
-
-    def dem_int_implementor(self, game_state, level = 6, attackToLeft=0,  demolisherAtTop=0, defenseToLeft=0,):
-        max_dem = 2*level
-        max_int = max(1,level-1)
-
-        deploy_1 = [5,8]
-        deploy_2 = [13,0]
-        deploy_3 = [14,0]
-        deploy_4 = [10,3]
-
-        dem_location = deploy_4 
-        int_location = deploy_1
-
-        # almost never use scenario
-        if(defenseToLeft!=0):
-            int_location = deploy_3 
-
-        if(demolisherAtTop!=0):
-            dem_location = deploy_1
-        elif(attackToLeft!=0):
-            dem_location = deploy_3
-
-        if(game_state.can_spawn(DEMOLISHER,dem_location,max_dem)):
-            self.only_demolisher(game_state, dem_location, max_dem)
-            self.only_interceptor(game_state, int_location, max_int)
-        elif(game_state.can_spawn(DEMOLISHER, dem_location, max_dem-2)):
-            self.only_demolisher(game_state, dem_location, max_dem-2)
-            self.only_interceptor(game_state, int_location, max_int)        
-        else:
-            self.only_interceptor(game_state, int_location, max_int)
-        return 
-
-
-    def only_demolisher(self, game_state, location, max_nos=9):
-        # Funtion to deploy only demolishers 
-        nos = min(max_nos, game_state.number_affordable(DEMOLISHER))
-        game_state.attempt_spawn(DEMOLISHER, location, nos)
-        return 
-
-    def only_interceptor(self, game_state, location, max_nos = 3):
-        # Fucntion to deploy interceptors
-        # By default interceptors are deployed at the bunker
-        # So that by the time enemy units reach the bunker, interceptors could counter the attack
-
-        nos = min(max_nos, game_state.number_affordable(INTERCEPTOR))
-        game_state.attempt_spawn(INTERCEPTOR, location, nos)
-        return 
-
-
-    def touch_it_scout(self, game_state, toLeft=0, max_nos=10):
-        # Scout deployement strategy
-        # Use this only from vishalakshi
-        # return
-        location = [[13, 0]]
-        if toLeft!=0:
-            location = [[14, 0]]
-        nos = min(max_nos, game_state.number_affordable(SCOUT))
-        game_state.attempt_spawn(SCOUT, location, nos)
+        if(len(self.support_base)>0):
+            game_state.attempt_spawn(SUPPORT, self.support_base)
+        if(len(self.support_up_base)):
+            game_state.attempt_upgrade(SUPPORT, self.support_up_base)
+        # It has made sure to build or upgrade the base promised structure of that time
         return
-
-
-
-    def demolisher_loc(self,game_state,size=0):
-        # Controls loc to facilitate demolishers attacking frontline defense
-        wl = [[x, 13] for x in range(5,10+3*size)]
-        game_state.attempt_spawn(WALL,wl)
-
-        # Making the recent wall temporary
-        game_state.attempt_remove(wl)
-        return 
-
-
-    ### Sanity & Inspection
     
-    def border_weakness_report(self, game_state):
-        # easily attackble region at y = 15
-        # returns the x location for the weakest zone
+    # utility functions
+    def dist(loc1, loc2):
+        # using manhattan distance for the distance
+        return abs(loc1[0]-loc2[0]) + abs(loc1[1]-loc2[1])
 
-        weakest_x = 9
-        weakness = 100
-        for i in range(28):
-            shields = len(game_state.get_attackers([i, 14], 0))
-            if(shields<weakness):
-                weakness = shields
-                weakest_x = i
-        return weakest_x 
+    def closePoint(self, location):
+        left_loc = [0,13]
+        right_loc = [27,13]
+        bottom_loc = [13,0]
 
-        return 
-    # Head of the defense strength and attack capacity report
-        # demolisher control score
-    def path_danger_report(self, game_state):
-        # Score the paths based on the predicted attack possible
-        # scout score..
+        # left = 0
+        # right = 1
+        # bottom = 2
 
-        location_options = [[13,0], [14,0]]
-        # paths = [game_state.find_path_to_edge(location) for location in start_x]
+        distances = [self.dist(left_loc, location),self.dist(right_loc, location),self.dist(bottom_loc, location)]
+        sum = 0
+        prev = 0
+        for i in distances:
+            sum+=i
+        rnd_i = random.random()
+        for i in range(3):
+            distances[i] = prev + distances[i]/sum
+            prev = distances[i]
+            if(distances[i]>=rnd_i):
+                return i
+        return 0
 
-        # scout score = number of scouts required to make it until the end
-        #  = total damage possible in the path/ scout tolerance
-        #  scout tolerance depends on the shielding (basic + shielding points)
-        # attack_report = []
-        # for path in paths:
-        #     attack_report.append([len(game_state.get_attackers(location, 0))*gamelib.GameUnit(TURRET, game_state.config).damage_i for location in path])
-
-        # return attack_report 
-
-        damages = []
-        # Get the damage estimate each path will take
-        for location in location_options:
-            path = game_state.find_path_to_edge(location)
-            damage = 0
-            if(not isinstance(path, Iterable)):
-                damage = 250
-            else:
-                for path_location in path:
-                    # Get number of enemy turrets that can attack each location and multiply by turret damage
-                    damage += len(game_state.get_attackers(path_location, 0)) * gamelib.GameUnit(TURRET, game_state.config).damage_i
-            damages.append(damage)
-        
-        # Now just return the location that takes the least damage
-        return damages
-
-
-    
-    def skeleton_fracture_report(self, game_state):
-        # Regions that are damaged
-        # Checks for Bottom Right, Bottom wall and Bunker Tail
-        wh = gamelib.GameUnit(WALL, game_state.config).max_health
-        
-        brw = []
-        for location in self.bottom_right_walls:
-            brw.append(location.append(self.wall_health(game_state, location)/wh))
-        bw = []
-        for location in self.bottom_walls:
-            bw.append(location.append(self.wall_health(game_state, location)/wh))
-        tlw = []
-        for location in self.top_left_walls:
-            tlw.append(location.append(self.wall_health(game_state, location)/wh))
-        btw = []
-        for location in self.bunker_tail:
-            btw.append(location.append(self.wall_health(game_state, location)/wh))
-        return (brw, bw, tlw, btw)
-
-
-
-    # Given a list of turrets, return a sub set of turrets whose health is less than the given thresholds
-    # The return list maintains the order in which turrets are given
-    # All the turrets in the return list would be ordered to be removed if there are abundant structure points are availble for reconstruction
-    # Replacing walls is high priority than replacing turrets
-
-    # turret_health = gamelib.GameUnit(TURRET, game_state.config).max_health
-
-    def turret_strength_report(self, game_state, locations, threshold):
-        report = []
-
-        for location in locations:
-            item = game_state.contains_stationary_unit(location)
-            if(item == False or item.unit_type != TURRET):
-                continue
-            if(item.health/item.max_health < threshold):
-                report.append(location)
-        return report 
-
-    def wall_strength_report(self, game_state, locations, threshold):
-        report = []
-
-        for location in locations:
-            item = game_state.contains_stationary_unit(location)
-            if(item == False or item.unit_type != WALL):
-                continue
-            if(item.health/item.max_health < threshold):
-                report.append(location)
-        return report 
-
-    
-
-    ### Utility functions 
-
-    def wall_health(self, game_state, location):
-        item = game_state.contains_statioanry_unit(location)
-        if(item == False or item.unit_type != WALL):
-            return 0
-        return item.health
-    
-    def turret_health(self, game_state, location):
-        item = game_state.contains_stationary_unit(location)
-        if(item == False or item.unit_type != TURRET):
-            return 0
-        return item.health
+""""----------------------------------------------------------------------"""
 class Maze():
     def __init__(self):
         pass 
