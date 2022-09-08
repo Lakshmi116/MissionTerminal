@@ -26,21 +26,24 @@ Advanced strategy tips:
 
 class Bunker():
     def __init__(self):
-        self.bunker_turrets = [[3, 12], [3, 11], [6, 9], [7, 9]] ## Bunker turrets consists of primary defense 4 turrets
-        self.heavy_bunker_turrets = [[4, 9], [9, 10]] ## Heavy bunker turrets after ~20 rounds
-        self.prime_support_locations =  [[1,12],[2,12], [2,11]] ## Supports at the top for mobile units
-        self.suppport_locations= [[7,8]] ## secondary supports
+        self.bunker_turrets = [[3, 13], [3, 12], [6, 10], [7, 9],[2,12]] ## Bunker turrets consists of primary defense 4 turrets
+        self.prime_bunker_turrets = [[26, 12],[3, 13]]
+        self.heavy_bunker_turrets = [[1,12],[2, 11], [4, 9], [5, 8], [1, 12],[7, 6], [8, 5]] ## Heavy bunker turrets after ~20 rounds
+        self.prime_support_locations =  [[2,12],[8, 8], [9, 7], [10, 6], [11, 5]] ## Supports at the top for mobile units
+        self.suppport_locations= [] ## secondary supports
 
-        self.fox_tail_turrets = [[24, 12]] ## Fox tail defending turret
+        self.fox_tail_turrets = [[26, 12]] ## Fox tail defending turret
 
+        self.super_prime_walls = [[27, 13],[0, 13],[4, 12],[7, 10]]
+        self.prime_walls = [[26,13],[2,13],[26,13],[1,13],[8, 9], [4, 13] ] ## bunker shield walls
+        self.bottom_right_walls = [ [25, 11],  [24, 10], [23, 9],  [22, 8],  [21, 7], [20, 6]] # Bottom Right wall
+        self.bottom_walls = [[12, 5], [13, 5], [14, 5], [15, 5], [17, 5], [18, 5], [19, 5], [16, 4]]          # Bottom wall
+        self.bunker_tail = [[7, 10], [8, 9],[9, 8],[10, 7],[11, 6]]         # Bunker Tail
+        self.top_left_walls = [[0, 13], [1, 13], [2, 13], [4, 13], [4, 12]]          ## Top Left Corner
+        self.fox_tail_walls = [[27, 13],[26,13]] 
+        self.fox_tail_extra_turrets = [[25,13],[25,12],[24,13],[24,12],[24,11]]
 
-        self.prime_walls = [[7, 10], [6, 10], [8, 9], [8, 10], [4, 13], [4, 12], [4, 11], [3, 13]] ## bunker shield walls
-        self.bottom_right_walls = [[x, x-14] for x in range(19,28)] # Bottom Right wall
-        self.bottom_walls = [[x, 5] for x in range(11,19)]          # Bottom wall
-        self.bunker_tail = [[x, 16-x] for x in range(8,11)]         # Bunker Tail
-        self.top_left_walls = [[x,13] for x in range(0,3)]          ## Top Left Corner
-        self.fox_tail_walls = [[x, x-14] for x in range(25,28)]     ## Fox tail part of the Bottom Right Walls
-        self.fox_tail_ext_walls = [[x, 13] for x in range(24, 28)]  ## Top Right walls to protect the fox tail part of the skeleton
+    
 
         # strategy flags
         self.structure_start = 5
@@ -90,10 +93,11 @@ class Bunker():
         # Heavy defense must be implemented at round 25-29
         # after round 30 each player could accumulate 21 points in every 3 rounds => heavy defense is required
 
-        if(turn <= 4):
-            return
+        
 
         # Demolisher are 3+ supported
+        
+
 
         if(turn>=10):
             # Remove the weak bunker, top left and fox tail units
@@ -105,9 +109,15 @@ class Bunker():
                 self.replacement_walls = []
                 self.replacement_turrets = []
                 self.replacement_flag = False
+        
+        if(turn<=5) :
+            self.vajra_kawachadhara(game_state=game_state)
+            self.kala_bhairava(game_state=game_state)
+            self.aayurvathi(game_state=game_state)
+            self.aayurvathi_pro(game_state=game_state)
 
 
-        if(turn <=25):
+        elif(turn <=25):
             # Bunker resistance = 7 Demolishers
             self.vajra_kawachadhara(game_state=game_state)
             self.aayurvathi(game_state=game_state)
@@ -156,6 +166,8 @@ class Bunker():
         # Touch it Scout implementation
             # pathFree = 0
             # scoutToLeft = 0
+        if(turn>=5) :
+            self.only_interceptor(game_state, [[5,8]], 2)
         if(turn>=3):
             scout_nos = ((turn//10)+1)*10
             # scout_nos -= random.randint(0,scout_nos//2)
@@ -167,7 +179,7 @@ class Bunker():
         if(turn<5):
             # interceptors
             int_location = [[5,8]]
-            self.only_interceptor(game_state,location=int_location, max_nos = 5)
+            self.only_interceptor(game_state,location=int_location, max_nos = 2)
         elif(turn<10):
             # level 1 dem_int
             self.dem_int_implementor(game_state,level=1,attackToLeft=attackToLeft, demolisherAtTop=demolisherAtTop,defenseToLeft=defenseToLeft)
@@ -213,19 +225,33 @@ class Bunker():
         game_state.attempt_spawn(TURRET, self.bunker_turrets)
 
         # Initializing fox tail contruction
-        game_state.attempt_spawn(WALL, self.fox_tail_ext_walls)
+        game_state.attempt_spawn(WALL, self.fox_tail_walls)
         game_state.attempt_spawn(TURRET, self.fox_tail_turrets)
+
+        
+
+        if(game_state.get_resource(MP,1)>=12) :
+            game_state.attempt_spawn(WALL,[[6,10],[6,11]])
+            game_state.attempt_remove([[6,11],[6,12]])
+
+        if(game_state.turn_number>=5):
+            game_state.attempt_spawn(TURRET,self.fox_tail_extra_turrets)
+
         return 
          
     def kala_bhairava(self, game_state):
+        
+        # Fox tail upgrade
+        game_state.attempt_upgrade(self.super_prime_walls)
+        game_state.attempt_upgrade(self.prime_bunker_turrets)
+
         # Defense upgrade controller
         game_state.attempt_upgrade(self.prime_walls)
         game_state.attempt_upgrade(self.bunker_turrets)
 
-        # Fox tail upgrade
-        game_state.attempt_upgrade(self.fox_tail_ext_walls)
-        game_state.attempt_upgrade(self.fox_tail_turrets)
-        game_state.attempt_upgrade(self.fox_tail_walls)
+        game_state.attempt_upgrade(self.fox_tail_extra_turrets)
+
+   
         return 
 
     def aayurvathi(self, game_state):
@@ -263,13 +289,13 @@ class Bunker():
         # Remove the weak bunker, top left and fox tail units
         # So that they become new in the next attempt
 
-        fox_tail_wall_removal = self.wall_strength_report(game_state, self.fox_tail_ext_walls, self.fox_tail_walls_th)
+       
         prime_wall_removal = self.wall_strength_report(game_state, self.prime_walls, self.prime_walls_th)
         top_left_wall_removal = self.wall_strength_report(game_state, self.top_left_walls, self.top_left_walls_th)
 
         bunker_turret_removal = self.turret_strength_report(game_state, self.bunker_turrets, self.bunker_turrets_th)
         
-        all_walls = fox_tail_wall_removal + prime_wall_removal + bunker_turret_removal
+        all_walls =  prime_wall_removal + bunker_turret_removal
 
         disp_sp = math.floor(game_state.get_resource(0) - save_sp)
         final_walls = []
@@ -316,13 +342,18 @@ class Bunker():
             dem_location = deploy_1
         elif(attackToLeft!=0):
             dem_location = deploy_3
+        
 
         if(game_state.can_spawn(DEMOLISHER,dem_location,max_dem)):
+           
             self.only_demolisher(game_state, dem_location, max_dem)
             self.only_interceptor(game_state, int_location, max_int)
+            
         elif(game_state.can_spawn(DEMOLISHER, dem_location, max_dem-2)):
+             
             self.only_demolisher(game_state, dem_location, max_dem-2)
-            self.only_interceptor(game_state, int_location, max_int)        
+            self.only_interceptor(game_state, int_location, max_int)
+                  
         else:
             self.only_interceptor(game_state, int_location, max_int)
         return 
