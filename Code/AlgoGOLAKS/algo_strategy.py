@@ -26,6 +26,86 @@ Advanced strategy tips:
   the actual current map state.
 """
 
+"""
+    TODO
+    ----
+    1. Adaptive building correction +
+    2. Replacement logic + 
+    3. LOC logic
+    4. Left or Right Damage ease? Next time decision helper flags +
+    5. Bandit from right 
+    6. Demolisher + Interceptor + 
+    7. Is left weak? Throw the demolishers
+    8. Scout correction + 
+    9. Heavy attack at border strategy.....!!
+    10. Sense danger at the mouth + 
+    11. Expensive bandit
+    12. Overload the build queues + 
+    13. Save interceptors (spl case: Enemy mobile points just less than 3 multiple)
+    14. Tune all the thresholds
+    15. Save enemy state ++
+    16. Timing algorithms +
+"""
+
+class Maze():
+    def __init__(self):
+        self.left_corner_walls = [[0,14], [1,14]]
+        self.left_corner_locations = [[0,14], [1,14],[2,14], [3,14], [1,15], [2,15], [3,15]]
+        self.left_corner_locations_big = [[4, 18], [3, 17], [4, 17], [2, 16], [3, 16], [4, 16],\
+                                          [1, 15], [2, 15], [3, 15], [4, 15], [0, 14],\
+                                          [1, 14], [2, 14], [3, 14], [4, 14]]
+        pass 
+
+    def cornerStrength(self, game_state, forBandit = True):
+        """usage: returns the left corner's health and damage"""
+        # Idea: Initial scouts = 6*(health of corners walls/120) + 2*u_turrets + 1*n_turrets (percentage upgraded_turrets)- 0.8*(tur_damage)
+        # Remaining scouts >= 6
+        # 
+        hurdle_strength = 0.4
+        wall_strength = 0
+        wall_den = 0
+        hurdle_walls = self.left_corner_walls
+        all_locs = self.left_corner_locations
+
+        if(forBandit == False):
+            all_locs = self.left_corner_locations_big
+
+
+        for loc in hurdle_walls:
+            unit = game_state.contains_stationary_unit(loc)
+            if(unit == False):
+                continue
+            wall_strength += unit.health
+            wall_den += unit.max_health
+        if(wall_den!=0):
+            hurdle_strength = wall_strength/wall_den
+        u_turrets = 0
+        n_turrets = 0
+        tur_damage = 0
+        for loc in all_locs:
+            unit = game_state.contains_stationary_unit(loc)
+            if(unit == False):
+                continue
+            if(unit.unit_type == TURRET):
+                if(unit.upgraded):
+                    u_turrets += 1
+                elif(loc!=[3,15]):
+                    n_turrets += 1
+                tur_damage += unit.health/unit.max_health
+        
+        return [hurdle_strength, u_turrets, n_turrets, tur_damage]
+
+    def weakSide(self, game_state):
+        """Usage: returns the weak side of the enemy map"""
+        pass 
+    def avgTimeTaken(self, game_state):
+        """returns [from_left_steps, from_right_steps] """
+    
+    def turretAtOpening(self, game_state):
+        """returns self.openings turret health and damage (enemy)"""
+        pass
+
+
 class Bunker():
     def __init__(self):
         # seed = random.randrange(maxsize)
@@ -84,28 +164,71 @@ class Bunker():
         self.save_sp = 0
         self.epsilon_cut = 0.75
         self.no_response_cnt = 0
+
+        self.exp_bandit = 0
+        self.right_is_strong = False
+        self.rich_th = 32
+
+        # Utility instances
+        self.enemy = Maze()
+
+        self.free_path_req = [[0,13],[1,13],[1,12],[2,12],[2,11],[3,11],[23,9]]
+
+        self.turret_base_tmp = []
+        self.wall_base_tmp = []
+        self.turret_up_base_tmp = []
+        self.wall_up_base_tmp = []
+
+
+
     """Attacking Strategy!!  """
     def setAttack(self, game_state):
         cur_mp = game_state.get_resource(1)
         # Check Scout attack possibility
+        if(self.exp_bandit!=1):
+            structureWeakFlag = True
+            if(game_state.get_resource(1,1) >= 6):
+                structureWeakFlag = False
+            scoutToLeft = self.vishalakshi(game_state)        
 
-        structureWeakFlag = True
-        if(game_state.get_resource(1,1) >= 6):
-            structureWeakFlag = False
-        scoutToLeft = self.vishalakshi(game_state)        
+            if(scoutToLeft==-1):
+                self.no_response_cnt = 0
+            else:
+                self.no_response_cnt+=1
 
-        if(scoutToLeft==-1):
-            self.no_response_cnt = 0
-        else:
-            self.no_response_cnt+=1
+            if(scoutToLeft!=-1 and (structureWeakFlag == True or self.no_response_cnt >=2)):
+                at_loc = [[13+scoutToLeft,0]]
+                game_state.attempt_spawn(SCOUT, at_loc, 90)
+        
+        if(self.exp_bandit == 1):
+            ns_front = self.expensive_bandit(game_state, cur_mp-2)
+            ns_back = cur_mp-2-ns_front
 
-        if(scoutToLeft!=-1 and (structureWeakFlag == True or self.no_response_cnt >=2)):
-            at_loc = [[13+scoutToLeft,0]]
-            game_state.attempt_spawn(SCOUT, at_loc, 90)
+            game_state.attempt_spawn(WALL, [[4,12]])
+            game_state.attempt_remove([[4,12]])
+
+            game_state.attempt_spawn(SCOUT, [14,0], ns_front)
+            game_state.attempt_spawn(SCOUT, [19,5], ns_back)
+            game_state.attempt_spawn(INTERCEPTOR, [23,9], 2)
+
+            self.exp_bandit = 0
+
+
+        t = (3+ game_state.turn_number//10)
+
+        # Is a bandit attack possible?
+        bandit_randomizer = random.random()
+        if(bandit_randomizer<=0.4 and t*game_state.type_cost(DEMOLISHER)[1]<=cur_mp and game_state.turn_number>20 and self.right_is_strong == True and game_state.get_resource(1)>=self.rich_th):
+            predicted_mp = self.calnext(2+t/3, cur_mp, 2)
+            ns_front = self.expensive_bandit(game_state, predicted_mp)
+            if(ns_front > -1):
+                self.exp_bandit = 1
+            game_state.attempt_remove(self.free_path_req)
+            # game_state.attempt_remove([[23,9]])
+
 
         # is Strong Attack?
-        t = (3+ game_state.turn_number//10)
-        if(t*game_state.type_cost(DEMOLISHER)[1]<=cur_mp):
+        if(self.exp_bandit!=1 and t*game_state.type_cost(DEMOLISHER)[1]<=cur_mp):
             at_loc = [[5, 8]]
             game_state.attempt_spawn(DEMOLISHER, at_loc, t)
 
@@ -113,7 +236,19 @@ class Bunker():
         use_mp = self.getMobile(game_state)
         game_state.attempt_spawn(INTERCEPTOR, [[5, 8]], use_mp)
         # Where to spawn?
-        return 
+        return
+
+    def expensive_bandit(self, game_state, predicted_mp):
+        hs, ut, nt, td = self.enemy.cornerStrength(game_state)
+        ns_front = math.ceil(6*(hs) + 2*ut + 1*nt - 0.8*td) 
+        ns_back = predicted_mp - ns_front
+
+        if(ns_back<5):
+            self.exp_bandit = False
+            return -1
+        return ns_front 
+
+
     def enemyWeakSide(self, game_state):
         # Check enemy corners
         # Objectives
@@ -187,15 +322,7 @@ class Bunker():
         return min(math.ceil(t/6), 3)
 
 
-    """
-    TODO
-    ----
-    1. Heavy attack at border strategy.....!!
-    2. Replacement logic
-    3. LOC logic
-    4. .. 
-
-    """
+    """---------------------------Break point----------------------------------"""
     def analyzeSelf(self, game_state):
         # SCANNIG SELF AREA FOR DEFENSE
         # SCAN ENEMY AREA FOR ATTACK
@@ -235,6 +362,20 @@ class Bunker():
         return 0
 
     def setDefense(self, game_state):
+        if(self.exp_bandit==1):
+            k = set(self.free_path_req)
+            self.turret_base_tmp = self.turret_base
+            self.turret_base = list(set(self.turret_base) - k)
+
+            self.wall_base_tmp = self.wall_base
+            self.wall_base = list(set(self.wall_base) - k)
+
+            self.wall_up_base_tmp = self.wall_up_base
+            self.wall_up_base = list(set(self.wall_up_base) - k)
+
+            self.turret_up_base_tmp = self.turret_up_base
+            self.turret_up_base = list(set(self.turret_up_base) - k)
+
         # Check for the health of the crucial pieces and plan for rearranngement
         #  self.previous_round_build_order 
         # fs = self.analyzeSelf(game_state)
@@ -266,6 +407,11 @@ class Bunker():
             self.buildSupport(game_state, game_state.get_resource(0))
         
         # gamelib.debug_write(disp_sp)
+        if(self.exp_bandit == 1):
+            self.turret_base = self.turret_base_tmp
+            self.wall_base = self.wall_base_tmp
+            self.turret_up_base = self.turret_up_base_tmp
+            self.wall_up_base = self.wall_up_base_tmp
         return 
         
         # base locations contain the expected progress so far
@@ -422,14 +568,6 @@ class Bunker():
         return ind
 
 """"----------------------------------------------------------------------"""
-class Maze():
-    def __init__(self):
-        pass 
-
-    def setDefense(self, gamae_state):
-        pass 
-    def setAttack(self, game_state):
-        pass 
 
 class AlgoStrategy(gamelib.AlgoCore):
     def __init__(self):
