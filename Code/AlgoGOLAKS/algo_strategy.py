@@ -212,6 +212,7 @@ class Bunker():
             game_state.attempt_spawn(INTERCEPTOR, [23,9], 2)
 
             self.exp_bandit = 0
+            return
 
 
         t = (3+ game_state.turn_number//10)
