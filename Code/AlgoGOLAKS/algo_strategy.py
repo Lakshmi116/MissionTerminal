@@ -114,30 +114,46 @@ class Bunker():
         game_state.attempt_spawn(INTERCEPTOR, [[5, 8]], use_mp)
         # Where to spawn?
         return 
-        
+    def enemyWeakSide(self, game_state):
+        # Check enemy corners
+        # Objectives
+        """
+        1. Any walls/turrets with pending removals? (stengthen that side)
+        2. Health percentage
+        3. Calculate optimal health and damage that can be handled
+        4. If side is weaker than theshold go hit it (residue use the interceptors to do the fetching)
+        """
+        return 
+    def avgTimeTakenEnemy(self, game_state):
+        """
+        This function returs the avg time taken by the enemy units to reach the opening 
+        usage: Staalling interceptors at appropriate locations to sync the timing of defense
+        """
+        return
+    
+
     def vishalakshi(self, game_state, max_scout=15):
         # Fetches points - Fast moving healthy units
         attack_report = self.path_danger_report(game_state)
 
-        # locations = [[13,0], [14, 0]]
+        # locations = [[14,0], [13, 0]]
         # return 1 if right is better than left
         # return 2 if left is better than right
 
-        right = -1 
-        isLeft = 0
+        right = 2
         damage_mn = 99999999
-        for i in range(1,-1,-1):
-            right+=1
+        for i in range(len(attack_report)):
+            right-=1
             if(damage_mn > attack_report[i]):
                 damage_mn = attack_report[i]
-                isLeft = right
             if damage_mn <5:
                 # self.touch_it_scout(game_state,toLeft=right, max_nos=max_scout)
                 return right
         return -1
 
+
     def path_danger_report(self, game_state):
-        location_options = [[13,0], [14,0]]
+        location_options = [[14,0], [13,0]]
         damages = []
         # Get the damage estimate each path will take
         for location in location_options:
@@ -174,10 +190,10 @@ class Bunker():
     """
     TODO
     ----
-    1. Incrementally add turrets, supports and upgrades
-    2. Attack strategty based on minimal waste and timely heavy damage
-    3. Attack on the weak side
-    4. Heavy attack at border strategy.....!!
+    1. Heavy attack at border strategy.....!!
+    2. Replacement logic
+    3. LOC logic
+    4. .. 
 
     """
     def analyzeSelf(self, game_state):
