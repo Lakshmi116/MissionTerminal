@@ -198,6 +198,7 @@ class Bunker():
         self.replacementFlag = False
         self.replace_th = 0.2
         self.iiti1_magic_numbers = [25,29,33,37,41,44,47,50,53,56,59]
+        self.nextScoutFlag_iiti1 = False
 
 
 
@@ -638,8 +639,73 @@ class Bunker():
                 mx = distances[i]
                 ind = i
         return ind
+    
+    def setIIT1Attack(self, game_state):
+        self.setAttack(game_state)
+        if(self.nextScoutFlag_iiti1 == True):
+            game_state.attempt_spawn(SCOUT, [14,0], 20)
+            self.nextScoutFlag_iiti1 = False
+        turn = game_state.turn_number
+        if(turn in self.iiti1_magic_numbers):
+            game_state.attempt_spawn(INTERCEPTOR, [[7,6]], 3)
+        t = turn//10 + 5 
+        if(game_state.get_resource(1)>=t*gamelib.GameUnit(DEMOLISHER).cost):
+            game_state.attempt_spawn(DEMOLISHER, [[7,6]], t)
+            self.nextScoutFlag_iiti1 = True
+        
+
+
 
 """"----------------------------------------------------------------------"""
+class Detector():
+    def __init__(self):
+        self.yes = False 
+        self.state = 0
+        self.fix = False
+        self.htl = [[8, 16], [20,16]]
+        self.hsl = [[13,25], [14,25]]
+        self.nos = True 
+
+    def detect_iiti1(self, game_state):
+        if(self.fix == True):
+            return self.yes 
+        else:
+            tl = []
+            sl = []
+            for y in range(14, 28):
+                for x in range(y-14,42-y):
+                    unit = game_state.contains_stationary_unit([x,y])
+                    if(unit == False):
+                        continue
+                    if(unit.unit_type == TURRET):
+                        tl.append([x,y])
+                    elif(unit.unit_type == SUPPORT):
+                        sl.append([x,y])
+
+            if(game_state.turn_number == 1):
+                if(tl ==self.htl and sl == self.hsl):
+                    self.state+=1
+                    self.htl = [[3,15], [25,15], [8,16], [14,16], [20,16]]
+                else:
+                    self.fix = True
+                    self.yes = False
+                    return False
+            elif(2<=game_state.turn_number<=5):
+                if(tl == self.htl and sl==self.hsl):
+                    self.state+=1
+                else:
+                    self.fix = True
+                    self.yes = False
+                    return False
+            
+            if(self.nos == True and game_state.get_resource(1,1) != 5):
+                self.nos = False
+            
+            if(self.nos == True and self.state == 5):
+                self.fix = True 
+                self.yes == True 
+                return True 
+             
 
 class AlgoStrategy(gamelib.AlgoCore):
     def __init__(self):
@@ -647,6 +713,8 @@ class AlgoStrategy(gamelib.AlgoCore):
         seed = random.randrange(maxsize)
         random.seed(seed)
         gamelib.debug_write('Random seed: {}'.format(seed))
+
+        self.isIITI1 = False
 
         """"Upgrade the locations that are followed by double # comments!!"""
 
@@ -670,6 +738,7 @@ class AlgoStrategy(gamelib.AlgoCore):
         # This is a good place to do initial setup
         self.scored_on_locations = []
         self.bunker_inst = Bunker()
+        self.iiti1_detector = Detector()
 
     def on_turn(self, turn_state):
         """
@@ -684,8 +753,11 @@ class AlgoStrategy(gamelib.AlgoCore):
         game_state.suppress_warnings(True)  #Comment or remove this line to enable warnings.
 
         self.bunker_inst.setDefense(game_state)
-        self.bunker_inst.setAttack(game_state)
-
+        self.isIITI1 = self.iiti1_detector.detect_iiti1(game_state)
+        if(self.isIITI1 == True):
+            self.bunker_inst.setIIT1Attack(game_state)
+        else:
+            self.bunker_inst.setAttack(game_state)
         game_state.submit_turn()
 
 
