@@ -204,7 +204,10 @@ class Bunker():
         result = []
         for loc in locations:
             path  = game_state.find_path_to_edge(loc)
-            result.append((len(path) - 25)//2)
+            if(not isinstance(path, Iterable)):
+                result.append(12)
+            else:
+                result.append((len(path) - 25)//2)
         if(result[0]<result[1]):
             if(result[0]>=14):
                 return [14,0]
@@ -260,7 +263,7 @@ class Bunker():
         # is Strong Attack?
         if(self.exp_bandit!=1 and t*game_state.type_cost(DEMOLISHER)[1]<=cur_mp):
             at_loc = [[14, 0]]
-            if(self.enemy.weakSide() == True):
+            if(self.enemy.weakSide(game_state) == True):
                 at_loc = [[5, 8]]
                 game_state.attempt_spawn(WALL, self.loc_walls)
                 game_state.attempt_remove(self.loc_walls)
