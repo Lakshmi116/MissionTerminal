@@ -4,6 +4,7 @@ from dis import dis
 from collections.abc import Iterable
 import queue
 from socket import getnameinfo
+from typing import Tuple
 from unittest import removeResult
 import gamelib
 import random
@@ -30,21 +31,23 @@ Advanced strategy tips:
     TODO
     ----
     1. Adaptive building correction +
-    2. Replacement logic + 
+    2. (done) Replacement logic + 
     3. LOC logic
     4. Left or Right Damage ease? Next time decision helper flags +
     5. Bandit from right 
     6. Demolisher + Interceptor + 
     7. Is left weak? Throw the demolishers
     8. Scout correction + 
-    9. Heavy attack at border strategy.....!!
+    9. Heavy attack at border strategy
     10. Sense danger at the mouth + 
-    11. Expensive bandit
+    11. (done) Expensive bandit 
     12. Overload the build queues + 
-    13. Save interceptors (spl case: Enemy mobile points just less than 3 multiple)
+    13. Save interceptors (spl case: Enemy mobile points just less than 3 multiple, not probable attack)
     14. Tune all the thresholds
     15. Save enemy state ++
-    16. Timing algorithms +
+    16. (done) Timing algorithms 
+    17. Tail is not resisting demolisher + scouts ++
+    18. Spawn demolisher and interceptors to left ++ 
 """
 
 class Maze():
@@ -98,9 +101,7 @@ class Maze():
     def weakSide(self, game_state):
         """Usage: returns the weak side of the enemy map"""
         pass 
-    def avgTimeTaken(self, game_state):
-        """returns [from_left_steps, from_right_steps] """
-    
+
     def turretAtOpening(self, game_state):
         """returns self.openings turret health and damage (enemy)"""
         pass
@@ -179,9 +180,26 @@ class Bunker():
         self.turret_up_base_tmp = []
         self.wall_up_base_tmp = []
 
+        self.replace_units = []
+        self.replacementFlag = False
+        self.replace_th = 0.2
+
 
 
     """Attacking Strategy!!  """
+    def interceptor_location(self, game_state):
+        # Calculating steps of enemy
+        locations = [[13, 0], [14, 0]]
+        result = []
+        for loc in locations:
+            path  = game_state.find_path_to_edge(loc)
+            result.append((len(path) - 25)//2)
+        if(result[0]<result[1]):
+            if(result[0]>=14):
+                return [14,0]
+            else:
+                return [5,8]
+
     def setAttack(self, game_state):
         cur_mp = game_state.get_resource(1)
         # Check Scout attack possibility
@@ -235,7 +253,7 @@ class Bunker():
 
         # get mobile do boring stuff
         use_mp = self.getMobile(game_state)
-        game_state.attempt_spawn(INTERCEPTOR, [[5, 8]], use_mp)
+        game_state.attempt_spawn(INTERCEPTOR, self.interceptor_location(game_state), use_mp)
         # Where to spawn?
         return
 
@@ -248,24 +266,6 @@ class Bunker():
             self.exp_bandit = False
             return -1
         return ns_front 
-
-
-    def enemyWeakSide(self, game_state):
-        # Check enemy corners
-        # Objectives
-        """
-        1. Any walls/turrets with pending removals? (stengthen that side)
-        2. Health percentage
-        3. Calculate optimal health and damage that can be handled
-        4. If side is weaker than theshold go hit it (residue use the interceptors to do the fetching)
-        """
-        return 
-    def avgTimeTakenEnemy(self, game_state):
-        """
-        This function returs the avg time taken by the enemy units to reach the opening 
-        usage: Staalling interceptors at appropriate locations to sync the timing of defense
-        """
-        return
     
 
     def vishalakshi(self, game_state, max_scout=15):
@@ -313,14 +313,35 @@ class Bunker():
         t = 3*(3 + game_state.turn_number//10)
         cur_mp = game_state.get_resource(1)
         # Golden number for the demolisher deployement
+        enemy_mp = game_state.get_resource(1,1)
+        diff = enemy_mp-t
+        rand_luck = random.random()
+
+
         disp_mp = cur_mp + (8/9)*(3-t) 
         if(disp_mp >= 1):
             return math.floor(disp_mp)
+
         r = 2+t/3
         disp_mp = 16*(7*r/4+9*cur_mp/16-t-1.5)/9
         if(disp_mp>=1):
             return math.floor(disp_mp)
-        return min(math.ceil(t/6), 3)
+        
+        k = min(math.ceil(t/6), 3)
+        if(diff<0):
+            if(rand_luck<=0.8):
+                return k-1
+            elif(rand_luck<=0.95):
+                return k
+            else:
+                return max(1,k-2)
+        else:
+            if(rand_luck<=0.8):
+                return k
+            elif(rand_luck<=0.95):
+                return k-1
+            else:
+                return max(1,k-2)
 
 
     """---------------------------Break point----------------------------------"""
@@ -376,6 +397,13 @@ class Bunker():
 
             self.turret_up_base_tmp = self.turret_up_base
             self.turret_up_base = list(set(self.turret_up_base) - k)
+        
+        if(self.replacementFlag == True):
+            for loc, unit in self.replace_units:
+                game_state.attempt_spawn(unit, loc)
+                game_state.attempt_upgrade(loc)
+            self.replace_units = []
+            self.replacementFlag = False 
 
         # Check for the health of the crucial pieces and plan for rearranngement
         #  self.previous_round_build_order 
@@ -413,6 +441,14 @@ class Bunker():
             self.wall_base = self.wall_base_tmp
             self.turret_up_base = self.turret_up_base_tmp
             self.wall_up_base = self.wall_up_base_tmp
+        
+        replace_locations = []
+        for loc in self.wall_base + self.turret_base:
+            unit = game_state.contains_stationary_unit(loc)
+            if(unit == False):
+                continue 
+            if(unit.health/unit.max_health <= self.replace_th):
+                replace_locations.append(loc)
         return 
         
         # base locations contain the expected progress so far
@@ -539,7 +575,34 @@ class Bunker():
             else:
                 self.support_bq.pop(0)
         return
-                
+    def replaceDefense(self, game_state, locations):
+        replaced = []
+        disp_sp = game_state.get_resource(0) - self.save_sp
+        turret_cost = 6
+        wall_cost = 2
+        for loc in locations:
+            unit = game_state.contains_stationary_unit(loc)
+            if(unit == False):
+                continue
+            if(unit.unit_type == TURRET and disp_sp>=turret_cost):
+                disp_sp -= turret_cost
+                replaced.append([loc, TURRET])
+                game_state.attempt_remove(loc)
+            elif(unit.unit_type == WALL and disp_sp >= wall_cost):
+                disp_sp-=wall_cost
+                replaced.append([loc, WALL])
+                game_state.attemp_remove(loc)
+            elif(disp_sp<wall_cost):
+                break 
+        self.replace_units = replaced
+        self.replacementFlag = True 
+        return replaced
+
+
+
+
+
+
     def closePoint(self, location):
         left_loc = [0,13]
         right_loc = [27,13]
