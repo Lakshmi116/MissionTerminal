@@ -1,4 +1,5 @@
 from argparse import SUPPRESS
+from dataclasses import replace
 from dis import dis
 # from distutils.spawn import spawn
 from collections.abc import Iterable
@@ -126,11 +127,11 @@ class Bunker():
         self.top_right_walls = [[26, 13], [27, 13]]
         self.right_walls = [[25, 11], [24, 10], [23, 9], [22, 8], [21, 7], [20, 6]]
         self.bottom_walls = [[12, 6], [13, 6], [14, 6], [15, 6], [16, 6], [17, 5], [18, 6], [19, 6]]
-        self.left_walls = [[6, 11], [7, 10], [8, 9], [9, 8], [10, 7], [11, 6]]
+        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10],[5,12]]
         self.loc_walls = [[5,12]]
 
         # Current Turret Locations (!!Remove!!)
-        self.prime_turrets = [[2, 12], [3, 12], [5, 11], [6, 10]]
+        self.prime_turrets = [[2, 12], [3, 12],[5,8],[6,9], [5, 11], [6, 10]]
         self.tail_turrets = [[26, 12]]
         self.bottom_turrets = []
 
@@ -153,15 +154,15 @@ class Bunker():
         self.prime_turret_bq = [[[3,10],TURRET], [[1,12], TURRET],\
                                 [[4,9],TURRET], [[7,9],TURRET],\
                                 [[3,11], TURRET]]
-        self.tail_turrets_bq = [[[25,12], TURRET],[[25,13], WALL],\
-                                [[24,12],TURRET], [[24,13],WALL],[[23,12],WALL], [[23,13],WALL],\
+        self.tail_turrets_bq = [[[25,12], TURRET],[[25,13], TURRET],\
+                                [[24,12],TURRET], [[24,13],TURRET],[[23,12],WALL], [[23,13],TURRET],\
                                 [[24,11],TURRET],\
                                 [[23,11], TURRET],[[22,11], WALL],\
                                 [[23,10], TURRET], [[22,10],WALL],\
                                 ]
-        self.bottom_turrets_bq = [[[10,6],TURRET], [[16,5], TURRET], [[13,5],TURRET]]
+        
 
-        self.support_bq = [[2, 11], [6, 7], [7, 7], [9, 7], [7, 6],\
+        self.support_bq = [[2, 11],[8,5],[9,4],[9,5], [9, 7],\
                            [9, 6], [10, 6], [11, 5], [11, 2], [12, 2],\
                            [12, 1]]
 
@@ -176,6 +177,7 @@ class Bunker():
         self.save_sp = 0
         self.epsilon_cut = 0.75
         self.no_response_cnt = 0
+        self.after_demolisher=False
 
         self.exp_bandit = 0
         self.right_is_strong = False
@@ -194,6 +196,7 @@ class Bunker():
         self.replace_units = []
         self.replacementFlag = False
         self.replace_th = 0.2
+        self.iiti1_magic_numbers = [25,29,33,37,41,44,47,50,53,56,59]
 
 
 
@@ -212,12 +215,20 @@ class Bunker():
             if(result[0]>=14):
                 return [14,0]
             else:
-                return [5,8]
+                return [7,6]
+        else:
+            return [7,6]
 
     def setAttack(self, game_state):
         cur_mp = game_state.get_resource(1)
         # Check Scout attack possibility
-        if(self.exp_bandit!=1):
+
+        # check for heavy attack
+        int_sec = False
+        if(game_state.turn_number in self.iiti1_magic_numbers):
+            int_sec = True 
+
+        if(int_sec == False):
             structureWeakFlag = True
             if(game_state.get_resource(1,1) >= 6):
                 structureWeakFlag = False
@@ -228,50 +239,38 @@ class Bunker():
             else:
                 self.no_response_cnt+=1
 
-            if(scoutToLeft!=-1 and (structureWeakFlag == True or self.no_response_cnt >=2)):
+            if(scoutToLeft!=-1 and (structureWeakFlag == True or self.no_response_cnt >=2 or self.after_demolisher==True)):
                 at_loc = [[13+scoutToLeft,0]]
                 game_state.attempt_spawn(SCOUT, at_loc, 90)
         
-        if(self.exp_bandit == 1):
-            ns_front = self.expensive_bandit(game_state, cur_mp-2)
-            ns_back = cur_mp-2-ns_front
-
-            game_state.attempt_spawn(WALL, [[4,12]])
-            game_state.attempt_remove([[4,12]])
-
-            game_state.attempt_spawn(SCOUT, [14,0], ns_front)
-            game_state.attempt_spawn(SCOUT, [19,5], ns_back)
-            game_state.attempt_spawn(INTERCEPTOR, [23,9], 2)
-
-            self.exp_bandit = 0
-            return
+        self.after_demolisher = False
+        
 
 
         t = (3+ game_state.turn_number//10)
 
         # Is a bandit attack possible?
-        bandit_randomizer = random.random()
-        if(bandit_randomizer<=0.4 and t*game_state.type_cost(DEMOLISHER)[1]<=cur_mp and game_state.turn_number>20 and self.right_is_strong == True and game_state.get_resource(1)>=self.rich_th):
-            predicted_mp = self.calnext(2+t/3, cur_mp, 2)
-            ns_front = self.expensive_bandit(game_state, predicted_mp)
-            if(ns_front > -1):
-                self.exp_bandit = 1
-            game_state.attempt_remove(self.free_path_req)
-            # game_state.attempt_remove([[23,9]])
+
 
 
         # is Strong Attack?
-        if(self.exp_bandit!=1 and t*game_state.type_cost(DEMOLISHER)[1]<=cur_mp):
+       
+        if(int_sec == False and t*game_state.type_cost(DEMOLISHER)[1]<=cur_mp):
             at_loc = [[14, 0]]
-            if(self.enemy.weakSide(game_state) == True):
-                at_loc = [[5, 8]]
+            if(self.enemy.weakSide(game_state) == False):
+                at_loc = [[7, 6]]
                 game_state.attempt_spawn(WALL, self.loc_walls)
                 game_state.attempt_remove(self.loc_walls)
             game_state.attempt_spawn(DEMOLISHER, at_loc, t)
+            self.after_demolisher=True
 
         # get mobile do boring stuff
-        use_mp = self.getMobile(game_state)
-        game_state.attempt_spawn(INTERCEPTOR, self.interceptor_location(game_state), use_mp)
+        if(int_sec == True):
+            nos = 3
+            game_state.attempt_spawn(INTERCEPTOR, [[7,6]], 3)
+        else:
+            use_mp = self.getMobile(game_state)
+            game_state.attempt_spawn(INTERCEPTOR, self.interceptor_location(game_state), use_mp)
         # Where to spawn?
         return
 
@@ -300,7 +299,7 @@ class Bunker():
             right-=1
             if(damage_mn > attack_report[i]):
                 damage_mn = attack_report[i]
-            if damage_mn <5:
+            if damage_mn <20:
                 # self.touch_it_scout(game_state,toLeft=right, max_nos=max_scout)
                 return right
         return -1
@@ -328,6 +327,7 @@ class Bunker():
         return (st-use)*0.75 + round 
 
     def getMobile(self, game_state):
+       
         t = 3*(3 + game_state.turn_number//10)
         cur_mp = game_state.get_resource(1)
         # Golden number for the demolisher deployement
@@ -399,19 +399,7 @@ class Bunker():
         return 0
 
     def setDefense(self, game_state):
-        if(self.exp_bandit==1):
-            k = set(self.free_path_req)
-            self.turret_base_tmp = self.turret_base
-            self.turret_base = list(set(self.turret_base) - k)
-
-            self.wall_base_tmp = self.wall_base
-            self.wall_base = list(set(self.wall_base) - k)
-
-            self.wall_up_base_tmp = self.wall_up_base
-            self.wall_up_base = list(set(self.wall_up_base) - k)
-
-            self.turret_up_base_tmp = self.turret_up_base
-            self.turret_up_base = list(set(self.turret_up_base) - k)
+       
         
         if(self.replacementFlag == True):
             for loc, unit in self.replace_units:
@@ -438,34 +426,26 @@ class Bunker():
             if(fs==1):
                 self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
                 self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
-                self.bottom_turrets_bq = self.buildExplore(game_state, self.bottom_turrets_bq)
+               
             else:
                 self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
                 self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
-                self.bottom_turrets_bq = self.buildExplore(game_state, self.bottom_turrets_bq)
+              
         else:
-            # if(fs==2):
-            #     self.bottom_turrets_bq = self.buildExplore(game_state, self.bottom_turrets_bq)
-            # elif(fs==1):
-            #     self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
-            # else:
-            #     self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
             self.buildSupport(game_state, game_state.get_resource(0))
         
         # gamelib.debug_write(disp_sp)
-        if(self.exp_bandit == 1):
-            self.turret_base = self.turret_base_tmp
-            self.wall_base = self.wall_base_tmp
-            self.turret_up_base = self.turret_up_base_tmp
-            self.wall_up_base = self.wall_up_base_tmp
+        
         
         replace_locations = []
-        for loc in self.wall_base + self.turret_base:
+        for loc in [[0,13],[27,13],[1,13],[26,13],[1,12],[26,12],[2,12],[25,12],[5,11]]:
             unit = game_state.contains_stationary_unit(loc)
             if(unit == False):
                 continue 
             if(unit.health/unit.max_health <= self.replace_th):
                 replace_locations.append(loc)
+
+        self.replaceDefense(game_state,replace_locations)
         return 
         
         # base locations contain the expected progress so far
