@@ -30,24 +30,23 @@ Advanced strategy tips:
 """
     TODO
     ----
-    1. Adaptive building correction +
+    1. (done) Adaptive building correction +
     2. (done) Replacement logic + 
-    3. LOC logic
-    4. Left or Right Damage ease? Next time decision helper flags +
-    5. Bandit from right 
-    6. Demolisher + Interceptor + 
-    7. Is left weak? Throw the demolishers
-    8. Scout correction + 
-    9. Heavy attack at border strategy
-    10. Sense danger at the mouth + 
-    11. (done) Expensive bandit 
-    12. Overload the build queues + 
-    13. Save interceptors (spl case: Enemy mobile points just less than 3 multiple, not probable attack)
-    14. Tune all the thresholds
-    15. Save enemy state ++
-    16. (done) Timing algorithms 
-    17. Tail is not resisting demolisher + scouts ++
-    18. Spawn demolisher and interceptors to left ++ 
+    3. (done) LOC logic
+    4. (done) Left or Right Damage ease? Next time decision helper flags +
+    5.        Bandit from right 
+    6. (done) Demolisher + Interceptor + 
+    7. (done) Is left weak? Throw the demolishers
+    8. (doing......) Scout correction + 
+    9.        Heavy attack at border strategy
+    10.       Sense danger at the mouth + 
+    11.(done) Expensive bandit 
+    12.       Overload the build queues + 
+    13.(done) Save interceptors (spl case: Enemy mobile points just less than 3 multiple, not probable attack)
+    14.       Tune all the thresholds
+    15.       Save enemy state ++
+    16.(done) Timing algorithms 
+    17.(done) Tail is not resisting demolisher + scouts ++
 """
 
 class Maze():
@@ -100,7 +99,18 @@ class Maze():
 
     def weakSide(self, game_state):
         """Usage: returns the weak side of the enemy map"""
-        pass 
+        # Idea: left, right corners turret + wall count
+        left_pts = 0
+        right_pts = 0
+        for loc in self.left_corner_locations_big:
+            r = [27-loc[0],loc[1]]
+            unit_l = game_state.contains_stationary_unit(loc)
+            unit_r = game_state.contains_stationary_unit(r)
+            if(unit_l != False):
+                left_pts+=unit_l.health
+            if(unit_r!=False):
+                right_pts+=unit_r.health
+        return left_pts<=right_pts 
 
     def turretAtOpening(self, game_state):
         """returns self.openings turret health and damage (enemy)"""
@@ -117,6 +127,7 @@ class Bunker():
         self.right_walls = [[25, 11], [24, 10], [23, 9], [22, 8], [21, 7], [20, 6]]
         self.bottom_walls = [[12, 6], [13, 6], [14, 6], [15, 6], [16, 6], [17, 5], [18, 6], [19, 6]]
         self.left_walls = [[6, 11], [7, 10], [8, 9], [9, 8], [10, 7], [11, 6]]
+        self.loc_walls = [[5,12]]
 
         # Current Turret Locations (!!Remove!!)
         self.prime_turrets = [[2, 12], [3, 12], [5, 11], [6, 10]]
@@ -248,7 +259,11 @@ class Bunker():
 
         # is Strong Attack?
         if(self.exp_bandit!=1 and t*game_state.type_cost(DEMOLISHER)[1]<=cur_mp):
-            at_loc = [[5, 8]]
+            at_loc = [[14, 0]]
+            if(self.enemy.weakSide() == True):
+                at_loc = [[5, 8]]
+                game_state.attempt_spawn(WALL, self.loc_walls)
+                game_state.attempt_remove(self.loc_walls)
             game_state.attempt_spawn(DEMOLISHER, at_loc, t)
 
         # get mobile do boring stuff
@@ -373,8 +388,9 @@ class Bunker():
             return 0
         else:
             return 1
-    def chooseSide(self):
-        d = [0.7, 0.95, 1]
+    def chooseSide(self, game_state):
+        t = game_state.turn_number//10
+        d = [0.5 + 0.05*t, 1]
         r = random.random()
         cnt = -1
         for i in d:
@@ -408,7 +424,7 @@ class Bunker():
         # Check for the health of the crucial pieces and plan for rearranngement
         #  self.previous_round_build_order 
         # fs = self.analyzeSelf(game_state)
-        fs = self.chooseSide()
+        fs = self.chooseSide(game_state)
         # Ensure the base defense is present
         self.buildBase(game_state)
         # Focus on the focus_side
@@ -420,12 +436,14 @@ class Bunker():
         if(epsilon<self.epsilon_cut):
             self.turret_uq = self.buildExploit(game_state, self.turret_uq)
 
-            if(fs==2):
-                self.bottom_turrets_bq = self.buildExplore(game_state, self.bottom_turrets_bq)
-            elif(fs==1):
+            if(fs==1):
                 self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
+                self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
+                self.bottom_turrets_bq = self.buildExplore(game_state, self.bottom_turrets_bq)
             else:
                 self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
+                self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
+                self.bottom_turrets_bq = self.buildExplore(game_state, self.bottom_turrets_bq)
         else:
             # if(fs==2):
             #     self.bottom_turrets_bq = self.buildExplore(game_state, self.bottom_turrets_bq)
