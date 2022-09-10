@@ -110,7 +110,7 @@ class Maze():
                 left_pts+=unit_l.health
             if(unit_r!=False):
                 right_pts+=unit_r.health
-        return left_pts<=right_pts 
+        return left_pts<right_pts 
 
     def turretAtOpening(self, game_state):
         """returns self.openings turret health and damage (enemy)"""
@@ -349,18 +349,14 @@ class Bunker():
         if(diff<0):
             if(rand_luck<=0.8):
                 return k-1
-            elif(rand_luck<=0.95):
-                return k
             else:
-                return max(1,k-2)
+                return k
+            
         else:
             if(rand_luck<=0.8):
                 return k
-            elif(rand_luck<=0.95):
-                return k-1
             else:
-                return max(1,k-2)
-
+                return k-1
 
     """---------------------------Break point----------------------------------"""
     def analyzeSelf(self, game_state):
