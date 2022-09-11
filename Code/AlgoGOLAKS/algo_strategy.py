@@ -127,7 +127,7 @@ class Bunker():
         self.top_right_walls = [[26, 13], [27, 13]]
         self.right_walls = [[25, 11], [24, 10], [23, 9], [22, 8], [21, 7], [20, 6]]
         self.bottom_walls = [[12, 6], [13, 6], [14, 6], [15, 6], [16, 6], [17, 5], [18, 6], [19, 6]]
-        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10],[6,12]]
+        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10]]
 
         # Current Turret Locations (!!Remove!!)
         self.prime_turrets = [[2, 12], [3, 12],[5, 11], [6, 10]]
@@ -394,7 +394,7 @@ class Bunker():
             cnt+=1
             if r<=i:
                 return cnt
-        return 0
+        return 1.
 
     def setDefense(self, game_state):
        
@@ -419,23 +419,33 @@ class Bunker():
         # epsilon = 0.75
 
         if(epsilon<self.epsilon_cut):
-            self.turret_uq = self.buildExploit(game_state, self.turret_uq)
-
-            if(fs==1):
-                self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
-                self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
-                self.buildSupport(game_state, game_state.get_resource(0))
-
-               
+            r = random.random()
+            if(r<=0.5):
+                self.turret_uq = self.buildExploit(game_state, self.turret_uq)
+                if(fs==1):
+                    self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
+                    self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
+                    self.buildSupport(game_state, game_state.get_resource(0))
+                else:
+                    self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
+                    self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
+                    self.buildSupport(game_state, game_state.get_resource(0))
             else:
-                self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
-                self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
-                self.buildSupport(game_state, game_state.get_resource(0))
+                if(fs==1):
+                    self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
+                    self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
+                    self.buildSupport(game_state, game_state.get_resource(0))
+                else:
+                    self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
+                    self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
+                    self.buildSupport(game_state, game_state.get_resource(0))
+                self.turret_uq = self.buildExploit(game_state, self.turret_uq)
+
               
         else:
             self.buildSupport(game_state, game_state.get_resource(0))
-            self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
             self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
+            self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
         
         # gamelib.debug_write(disp_sp)
         
@@ -469,7 +479,7 @@ class Bunker():
 
         for loc in self.turret_base :
              game_state.attempt_spawn(TURRET,loc)
-             if(loc in self.upgrade_first and loc in self.turret_up_base) :
+             if(loc in self.upgrade_first and loc in self.turret_up_base and game_state.turn_number >= 15):
                  game_state.attempt_upgrade(loc)
 
         if(len(self.wall_up_base)>0):
