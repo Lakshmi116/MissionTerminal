@@ -124,10 +124,11 @@ class Bunker():
         # random.seed(seed)
         # Current wall locations
         self.bandit_walls = [[0, 13], [1, 13],[2, 13], [3, 13]]
-        self.top_right_walls = [[27, 13],[26, 13]]
+        self.top_right_walls = [[26, 13], [27, 13]]
         self.right_walls = [[25, 11], [24, 10], [23, 9], [22, 8], [21, 7], [20, 6]]
         self.bottom_walls = [[12, 6], [13, 6], [14, 6], [15, 6], [16, 6], [17, 5], [18, 6], [19, 6]]
-        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10],[8,12]]
+        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10],[5,12]]
+        self.loc_walls = [[5,12]]
 
         # Current Turret Locations (!!Remove!!)
         self.prime_turrets = [[2, 12], [3, 12],[5, 11], [6, 10]]
@@ -145,27 +146,28 @@ class Bunker():
 
         self.turret_up_base = [[3,12]]
         self.support_up_base = []
-        self.wall_up_base = [[3,13], [0,13],[27,13] [2,13], [1, 13]]
+        self.wall_up_base = [[3,13], [2,13], [1, 13], [0,13]]
 
         self.upgrade_first =[[2, 12],[26, 12], [3, 12],[5, 11], [6, 10],[25,13],[24,13],[25,12]]
-        self.new_turret_base = []
-        self.new_wall_base=[]
+
 
         # Lists (turrets and supports at calculated locations)
         # turrets and walls both are at turret_bq queue
         self.prime_turret_bq = [[[3,10],TURRET], [[1,12], TURRET],\
                                 [[4,9],TURRET], [[7,9],TURRET],\
                                 [[3,11], TURRET],[[5,8],TURRET],[[6,7],TURRET]]
-        self.tail_turrets_bq = [[[25,13], TURRET],[[25,12], TURRET],\
-                                [[24,12],TURRET], [[24,13],TURRET],[[23,12],WALL],\
-                                [[23,13], WALL]
+        self.tail_turrets_bq = [[[25,12], TURRET],[[25,13], TURRET],\
+                                [[24,12],TURRET], [[24,13],TURRET],[[23,12],WALL], [[23,13],TURRET],\
+                                [[24,11],TURRET],\
+                                [[23,11], TURRET],[[22,11], WALL],\
+                                [[23,10], TURRET], [[22,10],WALL],\
                                 ]
+        
 
         self.support_bq = [[2, 11],[8,8],[8,5],[9,4],[9,5],\
                             [10,4],[11,4],[11,3],[11,2],[13,3]]
 
         self.turret_uq = [[[26, 13],WALL], [[26, 12], TURRET],\
-                          [[25,13], TURRET], [[25,12], TURRET],\
                           [[2, 12], TURRET], [[6,11],WALL] , [[5, 11], TURRET],\
                           [[27,13], WALL], [[25,11], WALL],\
                           [[7,10], WALL], [[6,10], TURRET],[[8,9], WALL]\
@@ -259,6 +261,8 @@ class Bunker():
             at_loc = [[14, 0]]
             if(self.enemy.weakSide(game_state) == False):
                 at_loc = [[7, 6]]
+                game_state.attempt_spawn(WALL, self.loc_walls)
+                game_state.attempt_remove(self.loc_walls)
             game_state.attempt_spawn(DEMOLISHER, at_loc, t)
             self.after_demolisher=True
 
@@ -394,7 +398,7 @@ class Bunker():
             cnt+=1
             if r<=i:
                 return cnt
-        return 1.
+        return 0
 
     def setDefense(self, game_state):
        
@@ -410,43 +414,32 @@ class Bunker():
         #  self.previous_round_build_order 
         # fs = self.analyzeSelf(game_state)
         fs = self.chooseSide(game_state)
+        # Ensure the base defense is present
+        self.buildBase(game_state)
         # Focus on the focus_side
         epsilon = random.random()
-        # Ensure the base defense is present
-        self.buildBase(game_state,epsilon)
-        
         # gamelib.debug_write("fs:",fs, "round: ", game_state.turn_number)
         
         # epsilon = 0.75
 
         if(epsilon<self.epsilon_cut):
-            r = random.random()
-            if(r<=0.5):
-                self.turret_uq = self.buildExploit(game_state, self.turret_uq)
-                if(fs==1):
-                    self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
-                    self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
-                    self.buildSupport(game_state, game_state.get_resource(0))
-                else:
-                    self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
-                    self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
-                    self.buildSupport(game_state, game_state.get_resource(0))
-            else:
-                if(fs==1):
-                    self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
-                    self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
-                    self.buildSupport(game_state, game_state.get_resource(0))
-                else:
-                    self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
-                    self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
-                    self.buildSupport(game_state, game_state.get_resource(0))
-                self.turret_uq = self.buildExploit(game_state, self.turret_uq)
+            self.turret_uq = self.buildExploit(game_state, self.turret_uq)
 
+            if(fs==1):
+                self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
+                self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
+                self.buildSupport(game_state, game_state.get_resource(0))
+
+               
+            else:
+                self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
+                self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
+                self.buildSupport(game_state, game_state.get_resource(0))
               
         else:
             self.buildSupport(game_state, game_state.get_resource(0))
-            self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
             self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
+            self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
         
         # gamelib.debug_write(disp_sp)
         
@@ -473,27 +466,15 @@ class Bunker():
         # self.check_weak_buildings at the borders
 
 
-    def buildBase(self, game_state,epsilon, supportFlag = 1):
+    def buildBase(self, game_state, supportFlag = 1):
         
 
         game_state.attempt_spawn(WALL,self.wall_base)
 
         for loc in self.turret_base :
              game_state.attempt_spawn(TURRET,loc)
-        
-        for loc in self.turret_base :
-            if(loc in self.upgrade_first):
+             if(loc in self.upgrade_first and loc in self.turret_up_base and game_state.turn_number>20) :
                  game_state.attempt_upgrade(loc)
-
-        if(epsilon<self.epsilon_cut):
-
-            for loc in self.new_turret_base :
-                game_state.attempt_spawn(TURRET,loc)
-                game_state.attempt_upgrade(loc)
-
-            for loc in self.new_wall_base :
-                game_state.attempt_spawn(WALL,loc)
-                game_state.attempt_upgrade(loc)
 
         if(len(self.wall_up_base)>0):
             game_state.attempt_upgrade(self.wall_up_base)
@@ -526,12 +507,12 @@ class Bunker():
                 unit_list.pop(0)
                 self.turret_uq.append([loc, unit])
                 if(unit==TURRET):
-                    self.new_turret_base.append(loc)
-                    if(disp_sp>=4):
+                    self.turret_base.append(loc)
+                    if(random.random()<0.6 and disp_sp>=4):
                         game_state.attempt_upgrade(loc)
                         disp_sp-=4
                 elif(unit==WALL):
-                    self.new_wall_base.append(loc)
+                    self.wall_base.append(loc)
             elif(disp_sp<game_state.type_cost(unit)[0]):
                 break
             else:
@@ -599,12 +580,10 @@ class Bunker():
                 self.support_bq.pop(0)
                 self.support_uq.append(loc)
                 disp_sp-=support_cost
-                if(random.random()<=0.25):
-                    self.buildSupport(game_state, disp_sp)
+                self.buildSupport(game_state, disp_sp)
             else:
                 self.support_bq.pop(0)
         return
-
     def replaceDefense(self, game_state, locations):
         replaced = []
         disp_sp = game_state.get_resource(0) - self.save_sp
