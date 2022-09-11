@@ -124,10 +124,10 @@ class Bunker():
         # random.seed(seed)
         # Current wall locations
         self.bandit_walls = [[0, 13], [1, 13],[2, 13], [3, 13]]
-        self.top_right_walls = [[26, 13], [27, 13]]
+        self.top_right_walls = [[27, 13],[26, 13]]
         self.right_walls = [[25, 11], [24, 10], [23, 9], [22, 8], [21, 7], [20, 6]]
         self.bottom_walls = [[12, 6], [13, 6], [14, 6], [15, 6], [16, 6], [17, 5], [18, 6], [19, 6]]
-        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10]]
+        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10],[8,12]]
 
         # Current Turret Locations (!!Remove!!)
         self.prime_turrets = [[2, 12], [3, 12],[5, 11], [6, 10]]
@@ -148,7 +148,8 @@ class Bunker():
         self.wall_up_base = [[3,13], [2,13], [1, 13], [0,13]]
 
         self.upgrade_first =[[2, 12],[26, 12], [3, 12],[5, 11], [6, 10],[25,13],[24,13],[25,12]]
-
+        self.new_turret_base = []
+        self.new_wall_base=[]
 
         # Lists (turrets and supports at calculated locations)
         # turrets and walls both are at turret_bq queue
@@ -409,10 +410,11 @@ class Bunker():
         #  self.previous_round_build_order 
         # fs = self.analyzeSelf(game_state)
         fs = self.chooseSide(game_state)
-        # Ensure the base defense is present
-        self.buildBase(game_state)
         # Focus on the focus_side
         epsilon = random.random()
+        # Ensure the base defense is present
+        self.buildBase(game_state,epsilon)
+        
         # gamelib.debug_write("fs:",fs, "round: ", game_state.turn_number)
         
         # epsilon = 0.75
@@ -471,15 +473,27 @@ class Bunker():
         # self.check_weak_buildings at the borders
 
 
-    def buildBase(self, game_state, supportFlag = 1):
+    def buildBase(self, game_state,epsilon, supportFlag = 1):
         
 
         game_state.attempt_spawn(WALL,self.wall_base)
 
         for loc in self.turret_base :
              game_state.attempt_spawn(TURRET,loc)
-             if(loc in self.upgrade_first and loc in self.turret_up_base and game_state.turn_number >= 15):
+        
+        for loc in self.turret_base :
+            if(loc in self.upgrade_first):
                  game_state.attempt_upgrade(loc)
+
+        if(epsilon<self.epsilon_cut):
+
+            for loc in self.new_turret_base :
+                game_state.attempt_spawn(TURRET,loc)
+                game_state.attempt_upgrade(loc)
+
+            for loc in self.new_wall_base :
+                game_state.attempt_spawn(WALL,loc)
+                game_state.attempt_upgrade(loc)
 
         if(len(self.wall_up_base)>0):
             game_state.attempt_upgrade(self.wall_up_base)
@@ -512,12 +526,12 @@ class Bunker():
                 unit_list.pop(0)
                 self.turret_uq.append([loc, unit])
                 if(unit==TURRET):
-                    self.turret_base.append(loc)
-                    if(random.random()<=0.8 and disp_sp>=4):
+                    self.new_turret_base.append(loc)
+                    if(disp_sp>=4):
                         game_state.attempt_upgrade(loc)
                         disp_sp-=4
                 elif(unit==WALL):
-                    self.wall_base.append(loc)
+                    self.new_wall_base.append(loc)
             elif(disp_sp<game_state.type_cost(unit)[0]):
                 break
             else:
@@ -585,7 +599,8 @@ class Bunker():
                 self.support_bq.pop(0)
                 self.support_uq.append(loc)
                 disp_sp-=support_cost
-                self.buildSupport(game_state, disp_sp)
+                if(random.random()<=0.25):
+                    self.buildSupport(game_state, disp_sp)
             else:
                 self.support_bq.pop(0)
         return
