@@ -156,9 +156,8 @@ class Bunker():
                                 [[4,9],TURRET], [[7,9],TURRET],\
                                 [[3,11], TURRET],[[5,8],TURRET],[[6,7],TURRET]]
         self.tail_turrets_bq = [[[25,13], TURRET],[[25,12], TURRET],\
-                                [[24,12],TURRET], [[24,13],TURRET],[[23,12],WALL], [[23,13],TURRET],\
-                                [[24,11],TURRET],\
-                                [[23,11], TURRET],[[22,11], WALL],\
+                                [[24,12],TURRET], [[24,13],TURRET],[[23,12],WALL],\
+                                [[23,13], WALL]
                                 ]
 
         self.support_bq = [[2, 11],[8,8],[8,5],[9,4],[9,5],\
@@ -514,7 +513,7 @@ class Bunker():
                 self.turret_uq.append([loc, unit])
                 if(unit==TURRET):
                     self.turret_base.append(loc)
-                    if(random.random()<0.6 and disp_sp>=4):
+                    if(random.random()<=0.8 and disp_sp>=4):
                         game_state.attempt_upgrade(loc)
                         disp_sp-=4
                 elif(unit==WALL):
@@ -590,6 +589,7 @@ class Bunker():
             else:
                 self.support_bq.pop(0)
         return
+
     def replaceDefense(self, game_state, locations):
         replaced = []
         disp_sp = game_state.get_resource(0) - self.save_sp
