@@ -165,9 +165,10 @@ class Bunker():
                             [10,4],[11,4],[11,3],[11,2],[13,3]]
 
         self.turret_uq = [[[26, 13],WALL], [[26, 12], TURRET],\
-                          [[2, 12], TURRET], [[6,11],WALL] , [[5, 11], TURRET],\
-                          [[27,13], WALL], [[25,11], WALL],\
-                          [[7,10], WALL], [[6,10], TURRET],[[8,9], WALL]\
+                        
+                          [[2, 12], TURRET],[[5, 11], TURRET], [[6,11],WALL] , \
+                           [[6,10], TURRET],[[27,13], WALL], [[25,11], WALL],\
+                          [[7,10], WALL],[[8,9], WALL]\
                         ]
         self.support_uq = []
 
@@ -239,19 +240,23 @@ class Bunker():
                 self.no_response_cnt+=1
 
             if(scoutToLeft!=-1 and (structureWeakFlag == True or self.no_response_cnt >=2 or self.after_demolisher==True)):
-                at_loc = [[13+scoutToLeft,0]]
-                game_state.attempt_spawn(SCOUT, at_loc, 90)
+                if(scoutToLeft == 0):
+                    at_loc_1 = [[12,1]]
+                    at_loc_2 = [[13,0]]
+                    game_state.attempt_spawn(SCOUT, at_loc_1, 10)
+                    game_state.attempt_spawn(SCOUT, at_loc_2, 20)
+                else:
+                    at_loc_1 = [[14,0]]
+                    at_loc_2 = [[19,5]]
+                    game_state.attempt_spawn(SCOUT, at_loc_1, 10)
+                    game_state.attempt_spawn(SCOUT, at_loc_2, 20)
+
         
         self.after_demolisher = False
         
 
 
         t = (3+ game_state.turn_number//10)
-
-        # Is a bandit attack possible?
-
-
-
         # is Strong Attack?
        
         if(int_sec == False and t*game_state.type_cost(DEMOLISHER)[1]<=cur_mp):
@@ -314,9 +319,14 @@ class Bunker():
             if(not isinstance(path, Iterable)):
                 damage = 250
             else:
-                for path_location in path:
-                    # Get number of enemy turrets that can attack each location and multiply by turret damage
-                    damage += len(game_state.get_attackers(path_location, 0)) * gamelib.GameUnit(TURRET, game_state.config).damage_i
+                x = path[-1][0]
+                y = path[-1][1]
+                if(y-x==14 or x+y==41):
+                    for path_location in path:
+                        # Get number of enemy turrets that can attack each location and multiply by turret damage
+                        damage += len(game_state.get_attackers(path_location, 0)) * gamelib.GameUnit(TURRET, game_state.config).damage_i
+                else:
+                    damage = 250
             damages.append(damage)
         
         # Now just return the location that takes the least damage
@@ -472,11 +482,18 @@ class Bunker():
                     game_state.attempt_upgrade(loc)
                 else:
                     break 
+        
+        if(random.random()<=0.2):
+            if(len(self.wall_up_base)>0):
+                game_state.attempt_upgrade(self.wall_up_base)
+            if(len(self.turret_up_base)>0):
+                game_state.attempt_upgrade(self.turret_up_base)
+        else:
+            if(len(self.turret_up_base)>0):
+                game_state.attempt_upgrade(self.turret_up_base)
+            if(len(self.wall_up_base)>0):
+                game_state.attempt_upgrade(self.wall_up_base)
 
-        if(len(self.wall_up_base)>0):
-            game_state.attempt_upgrade(self.wall_up_base)
-        if(len(self.turret_up_base)>0):
-            game_state.attempt_upgrade(self.turret_up_base)
 
         if(supportFlag==1):
             if(len(self.support_base)>0):
