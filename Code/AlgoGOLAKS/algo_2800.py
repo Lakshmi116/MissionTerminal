@@ -127,7 +127,7 @@ class Bunker():
         self.top_right_walls = [[26, 13], [27, 13]]
         self.right_walls = [[25, 11], [24, 10], [23, 9], [22, 8], [21, 7], [20, 6]]
         self.bottom_walls = [[12, 6], [13, 6], [14, 6], [15, 6], [16, 6], [17, 5], [18, 6], [19, 6]]
-        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10],[5,12]]
+        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10],[6,12]]
         self.loc_walls = [[5,12]]
 
         # Current Turret Locations (!!Remove!!)
@@ -148,7 +148,7 @@ class Bunker():
         self.support_up_base = []
         self.wall_up_base = [[3,13], [2,13], [1, 13], [0,13]]
 
-        self.upgrade_first =[[2, 12],[26, 12], [3, 12],[5, 11], [6, 10],[25,13],[24,13],[25,12]]
+        self.upgrade_first =[[2, 12],[26, 12], [3, 12],[5, 11], [6, 10],[25,13],[24,13],[25,12],[24,12],[23,12],[24,11]]
 
 
         # Lists (turrets and supports at calculated locations)
@@ -157,11 +157,8 @@ class Bunker():
                                 [[4,9],TURRET], [[7,9],TURRET],\
                                 [[3,11], TURRET],[[5,8],TURRET],[[6,7],TURRET]]
         self.tail_turrets_bq = [[[25,12], TURRET],[[25,13], TURRET],\
-                                [[24,12],TURRET], [[24,13],TURRET],[[23,12],WALL], [[23,13],TURRET],\
-                                [[24,11],TURRET],\
-                                [[23,11], TURRET],[[22,11], WALL],\
-                                [[23,10], TURRET], [[22,10],WALL],\
-                                ]
+                                [[24,12],TURRET], [[24,13],TURRET],\
+                                [[23,12],TURRET], [[23,13],WALL]]
         
 
         self.support_bq = [[2, 11],[8,8],[8,5],[9,4],[9,5],\
@@ -261,8 +258,8 @@ class Bunker():
             at_loc = [[14, 0]]
             if(self.enemy.weakSide(game_state) == False):
                 at_loc = [[7, 6]]
-                game_state.attempt_spawn(WALL, self.loc_walls)
-                game_state.attempt_remove(self.loc_walls)
+                # game_state.attempt_spawn(WALL, self.loc_walls)
+                # game_state.attempt_remove(self.loc_walls)
             game_state.attempt_spawn(DEMOLISHER, at_loc, t)
             self.after_demolisher=True
 
@@ -424,18 +421,14 @@ class Bunker():
 
         if(epsilon<self.epsilon_cut):
             self.turret_uq = self.buildExploit(game_state, self.turret_uq)
-
             if(fs==1):
                 self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
                 self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
                 self.buildSupport(game_state, game_state.get_resource(0))
-
-               
             else:
                 self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
                 self.tail_turrets_bq = self.buildExplore(game_state, self.tail_turrets_bq)
                 self.buildSupport(game_state, game_state.get_resource(0))
-              
         else:
             self.buildSupport(game_state, game_state.get_resource(0))
             self.prime_turret_bq = self.buildExplore(game_state, self.prime_turret_bq)
@@ -470,11 +463,15 @@ class Bunker():
         
 
         game_state.attempt_spawn(WALL,self.wall_base)
+        game_state.attempt_upgrade([[27,13], [26,13]])
 
         for loc in self.turret_base :
              game_state.attempt_spawn(TURRET,loc)
-             if(loc in self.upgrade_first and loc in self.turret_up_base and game_state.turn_number>20) :
-                 game_state.attempt_upgrade(loc)
+             if(loc in self.upgrade_first and loc in self.turret_up_base and game_state.turn_number>10) :
+                if(game_state.get_resource(0)>=4):
+                    game_state.attempt_upgrade(loc)
+                else:
+                    break 
 
         if(len(self.wall_up_base)>0):
             game_state.attempt_upgrade(self.wall_up_base)
@@ -508,8 +505,9 @@ class Bunker():
                 self.turret_uq.append([loc, unit])
                 if(unit==TURRET):
                     self.turret_base.append(loc)
-                    if(random.random()<0.6 and disp_sp>=4):
+                    if(random.random()<=0.9 and disp_sp>=4):
                         game_state.attempt_upgrade(loc)
+
                         disp_sp-=4
                 elif(unit==WALL):
                     self.wall_base.append(loc)
@@ -534,15 +532,17 @@ class Bunker():
             if(cur_unit==False):
                 unit_list.pop(0)
                 continue
-            if(unit==TURRET and disp_sp>=turret_cost):
+            if(cur_unit.unit_type==TURRET and cur_unit.upgraded == False and disp_sp>=turret_cost):
                 game_state.attempt_upgrade(loc)
                 disp_sp-=turret_cost
                 self.turret_up_base.append(loc)
                 unit_list.pop(0)
-            elif(unit==WALL and disp_sp>=wall_cost):
+            elif(cur_unit.unit_type==WALL and cur_unit.upgraded == False and disp_sp>=wall_cost):
                 game_state.attempt_upgrade(loc)
                 disp_sp-=wall_cost 
                 self.wall_up_base.append(loc)
+                unit_list.pop(0)
+            elif(cur_unit.upgraded == True):
                 unit_list.pop(0)
             else:
                 break

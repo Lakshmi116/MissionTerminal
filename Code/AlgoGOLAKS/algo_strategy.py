@@ -145,7 +145,7 @@ class Bunker():
 
         self.turret_up_base = [[3,12]]
         self.support_up_base = []
-        self.wall_up_base = [[3,13], [0,13],[27,13] [2,13], [1, 13]]
+        self.wall_up_base = [[3,13], [0,13],[27,13], [2,13], [1, 13]]
 
         self.upgrade_first =[[2, 12],[26, 12], [3, 12],[5, 11], [6, 10],[25,13],[24,13],[25,12]]
         self.new_turret_base = []
