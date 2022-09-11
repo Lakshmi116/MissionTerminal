@@ -127,8 +127,7 @@ class Bunker():
         self.top_right_walls = [[26, 13], [27, 13]]
         self.right_walls = [[25, 11], [24, 10], [23, 9], [22, 8], [21, 7], [20, 6]]
         self.bottom_walls = [[12, 6], [13, 6], [14, 6], [15, 6], [16, 6], [17, 5], [18, 6], [19, 6]]
-        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10],[5,12]]
-        self.loc_walls = [[5,12]]
+        self.left_walls = [ [8, 9], [9, 8], [10, 7], [11, 6],[6, 11], [7, 10],[6,12]]
 
         # Current Turret Locations (!!Remove!!)
         self.prime_turrets = [[2, 12], [3, 12],[5, 11], [6, 10]]
@@ -156,18 +155,17 @@ class Bunker():
         self.prime_turret_bq = [[[3,10],TURRET], [[1,12], TURRET],\
                                 [[4,9],TURRET], [[7,9],TURRET],\
                                 [[3,11], TURRET],[[5,8],TURRET],[[6,7],TURRET]]
-        self.tail_turrets_bq = [[[25,12], TURRET],[[25,13], TURRET],\
+        self.tail_turrets_bq = [[[25,13], TURRET],[[25,12], TURRET],\
                                 [[24,12],TURRET], [[24,13],TURRET],[[23,12],WALL], [[23,13],TURRET],\
                                 [[24,11],TURRET],\
                                 [[23,11], TURRET],[[22,11], WALL],\
-                                [[23,10], TURRET], [[22,10],WALL],\
                                 ]
-        
 
         self.support_bq = [[2, 11],[8,8],[8,5],[9,4],[9,5],\
                             [10,4],[11,4],[11,3],[11,2],[13,3]]
 
         self.turret_uq = [[[26, 13],WALL], [[26, 12], TURRET],\
+                          [[25,13], TURRET], [[25,12], TURRET],\
                           [[2, 12], TURRET], [[6,11],WALL] , [[5, 11], TURRET],\
                           [[27,13], WALL], [[25,11], WALL],\
                           [[7,10], WALL], [[6,10], TURRET],[[8,9], WALL]\
@@ -261,8 +259,6 @@ class Bunker():
             at_loc = [[14, 0]]
             if(self.enemy.weakSide(game_state) == False):
                 at_loc = [[7, 6]]
-                game_state.attempt_spawn(WALL, self.loc_walls)
-                game_state.attempt_remove(self.loc_walls)
             game_state.attempt_spawn(DEMOLISHER, at_loc, t)
             self.after_demolisher=True
 
